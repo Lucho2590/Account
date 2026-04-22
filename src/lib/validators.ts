@@ -78,6 +78,32 @@ export const movimientoSchema = z.object({
 
 export type MovimientoSchemaType = z.infer<typeof movimientoSchema>;
 
+// Schema para Venta
+export const ventaItemSchema = z.object({
+  productoId: z.string().min(1, 'Seleccioná un producto'),
+  productoCodigo: z.string(),
+  productoNombre: z.string().min(1),
+  unidad: z.string(),
+  cantidad: z.number().positive('La cantidad debe ser mayor a 0'),
+  precioUnitario: z.number().min(0, 'El precio no puede ser negativo'),
+  subtotal: z.number().min(0),
+});
+
+export type VentaItemSchemaType = z.infer<typeof ventaItemSchema>;
+
+export const ventaSchema = z.object({
+  clienteId: z.string().min(1, 'Seleccioná un cliente'),
+  fecha: z.string().min(1, 'La fecha es requerida'),
+  items: z.array(ventaItemSchema).min(1, 'Agregá al menos un producto a la venta'),
+  total: z.number().positive('El total debe ser mayor a 0'),
+  medioPago: z.enum(['efectivo', 'transferencia', 'tarjeta', 'cheque', 'cuenta_corriente']),
+  comprobanteTipo: z.string().optional(),
+  comprobanteNumero: z.string().optional(),
+  observaciones: z.string().optional(),
+});
+
+export type VentaSchemaType = z.infer<typeof ventaSchema>;
+
 // Schema para Contacto
 export const contactoSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
