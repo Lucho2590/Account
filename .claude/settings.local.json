@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(pkill:*)",
+      "Bash(killall node:*)",
+      "Bash(npm run seed:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd account control dashboard application\n\n- Login page with authentication\n- Dashboard structure with sidebar navigation\n- Components using shadcn/ui\n- Middleware for auth protection\n- Context providers for state management\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}
