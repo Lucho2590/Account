@@ -12,6 +12,7 @@ import {
   updateDoc,
   orderBy,
   writeBatch,
+  increment,
 } from 'firebase/firestore';
 import {
   Cliente,
@@ -26,6 +27,9 @@ import {
   Contacto,
   ContactoFormData,
   TipoEntidad,
+  Venta,
+  VentaFormData,
+  VentaItem,
 } from '@/types';
 
 // ==================== CLIENTES ====================
@@ -556,4 +560,254 @@ export async function getAlertasStock() {
       stockActual: p.stockActual,
       stockMinimo: p.stockMinimo,
     }));
+}
+
+// ==================== VENTAS ====================
+
+function mapVentaDoc(id: string, data: Record<string, unknown>): Venta {
+  const rawFecha = data.fecha as { toDate?: () => Date } | undefined;
+  const rawCreated = data.createdAt as { toDate?: () => Date } | undefined;
+  const rawAnulada = data.anuladaAt as { toDate?: () => Date } | undefined;
+  return {
+    id,
+    numero: (data.numero as number) ?? 0,
+    clienteId: data.clienteId as string,
+    clienteNombre: (data.clienteNombre as string) || '',
+    cuentaCorrienteId: data.cuentaCorrienteId as string,
+    fecha: rawFecha?.toDate?.()?.toISOString() || new Date().toISOString(),
+    items: (data.items as VentaItem[]) || [],
+    total: (data.total as number) || 0,
+    medioPago: data.medioPago as Venta['medioPago'],
+    estado: (data.estado as Venta['estado']) || 'completada',
+    movimientoVentaId: (data.movimientoVentaId as string) || '',
+    movimientoPagoId: data.movimientoPagoId as string | undefined,
+    movimientoAnulacionVentaId: data.movimientoAnulacionVentaId as string | undefined,
+    movimientoAnulacionPagoId: data.movimientoAnulacionPagoId as string | undefined,
+    comprobanteTipo: data.comprobanteTipo as string | undefined,
+    comprobanteNumero: data.comprobanteNumero as string | undefined,
+    observaciones: data.observaciones as string | undefined,
+    createdAt: rawCreated?.toDate?.()?.toISOString() || new Date().toISOString(),
+    anuladaAt: rawAnulada?.toDate?.()?.toISOString(),
+  };
+}
+
+export async function createVenta(
+  data: VentaFormData,
+  cliente: Cliente,
+): Promise<Venta> {
+  if (data.items.length === 0) {
+    throw new Error('La venta debe tener al menos un item');
+  }
+
+  const cuenta = await getCuentaByEntidad(cliente.id, 'cliente');
+  if (!cuenta) {
+    throw new Error('El cliente no tiene una cuenta corriente asociada');
+  }
+
+  const productosSnap = await Promise.all(
+    data.items.map((it) => getDoc(doc(db, 'productos', it.productoId))),
+  );
+  productosSnap.forEach((snap, idx) => {
+    const it = data.items[idx];
+    if (!snap.exists()) {
+      throw new Error(`Producto "${it.productoNombre}" no encontrado`);
+    }
+    const stock = (snap.data().stockActual as number) || 0;
+    if (stock < it.cantidad) {
+      throw new Error(
+        `Stock insuficiente para "${it.productoNombre}". Disponible: ${stock}, solicitado: ${it.cantidad}`,
+      );
+    }
+  });
+
+  const saldoAnterior = cuenta.saldoActual;
+  const saldoAfterVenta = saldoAnterior + data.total;
+  const saldoFinal =
+    data.medioPago === 'cuenta_corriente' ? saldoAfterVenta : saldoAnterior;
+
+  const ventasCountSnap = await getDocs(collection(db, 'ventas'));
+  const numero = ventasCountSnap.size + 1;
+
+  const batch = writeBatch(db);
+
+  const ventaRef = doc(collection(db, 'ventas'));
+  const movVentaRef = doc(collection(db, 'movimientos'));
+  const movPagoRef =
+    data.medioPago !== 'cuenta_corriente' ? doc(collection(db, 'movimientos')) : null;
+
+  data.items.forEach((it) => {
+    batch.update(doc(db, 'productos', it.productoId), {
+      stockActual: increment(-it.cantidad),
+      updatedAt: Timestamp.now(),
+    });
+  });
+
+  const descripcionVenta = `Venta #${numero} — ${data.items.length} item${data.items.length === 1 ? '' : 's'}`;
+  batch.set(movVentaRef, {
+    cuentaId: cuenta.id,
+    tipo: 'debe',
+    concepto: 'venta',
+    descripcion: descripcionVenta,
+    monto: data.total,
+    saldoAnterior,
+    saldoPosterior: saldoAfterVenta,
+    comprobanteTipo: data.comprobanteTipo || '',
+    comprobanteNumero: data.comprobanteNumero || '',
+    fecha: Timestamp.fromDate(new Date(data.fecha)),
+    createdAt: Timestamp.now(),
+  });
+
+  if (movPagoRef) {
+    const medioLabel =
+      data.medioPago === 'efectivo'
+        ? 'Efectivo'
+        : data.medioPago === 'transferencia'
+          ? 'Transferencia'
+          : data.medioPago === 'tarjeta'
+            ? 'Tarjeta'
+            : 'Cheque';
+    batch.set(movPagoRef, {
+      cuentaId: cuenta.id,
+      tipo: 'haber',
+      concepto: 'cobro',
+      descripcion: `Cobro venta #${numero} (${medioLabel})`,
+      monto: data.total,
+      saldoAnterior: saldoAfterVenta,
+      saldoPosterior: saldoAnterior,
+      comprobanteTipo: data.comprobanteTipo || '',
+      comprobanteNumero: data.comprobanteNumero || '',
+      fecha: Timestamp.fromDate(new Date(data.fecha)),
+      createdAt: Timestamp.now(),
+    });
+  }
+
+  batch.update(doc(db, 'cuentas_corrientes', cuenta.id), {
+    saldoActual: saldoFinal,
+    updatedAt: Timestamp.now(),
+  });
+
+  batch.set(ventaRef, {
+    numero,
+    clienteId: cliente.id,
+    clienteNombre: cliente.razonSocial,
+    cuentaCorrienteId: cuenta.id,
+    fecha: Timestamp.fromDate(new Date(data.fecha)),
+    items: data.items,
+    total: data.total,
+    medioPago: data.medioPago,
+    estado: 'completada',
+    movimientoVentaId: movVentaRef.id,
+    ...(movPagoRef ? { movimientoPagoId: movPagoRef.id } : {}),
+    comprobanteTipo: data.comprobanteTipo || '',
+    comprobanteNumero: data.comprobanteNumero || '',
+    observaciones: data.observaciones || '',
+    createdAt: Timestamp.now(),
+  });
+
+  await batch.commit();
+
+  return {
+    id: ventaRef.id,
+    numero,
+    clienteId: cliente.id,
+    clienteNombre: cliente.razonSocial,
+    cuentaCorrienteId: cuenta.id,
+    fecha: new Date(data.fecha).toISOString(),
+    items: data.items,
+    total: data.total,
+    medioPago: data.medioPago,
+    estado: 'completada',
+    movimientoVentaId: movVentaRef.id,
+    movimientoPagoId: movPagoRef?.id,
+    comprobanteTipo: data.comprobanteTipo,
+    comprobanteNumero: data.comprobanteNumero,
+    observaciones: data.observaciones,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export async function getVentas(): Promise<Venta[]> {
+  const q = query(collection(db, 'ventas'), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => mapVentaDoc(d.id, d.data()));
+}
+
+export async function getVenta(id: string): Promise<Venta | null> {
+  const snap = await getDoc(doc(db, 'ventas', id));
+  if (!snap.exists()) return null;
+  return mapVentaDoc(snap.id, snap.data());
+}
+
+export async function anularVenta(ventaId: string): Promise<void> {
+  const ventaSnap = await getDoc(doc(db, 'ventas', ventaId));
+  if (!ventaSnap.exists()) throw new Error('Venta no encontrada');
+
+  const venta = mapVentaDoc(ventaSnap.id, ventaSnap.data());
+  if (venta.estado === 'anulada') throw new Error('La venta ya está anulada');
+
+  const cuentaSnap = await getDoc(doc(db, 'cuentas_corrientes', venta.cuentaCorrienteId));
+  if (!cuentaSnap.exists()) throw new Error('Cuenta corriente no encontrada');
+  const saldoAnterior = (cuentaSnap.data().saldoActual as number) || 0;
+
+  // Reversión: siempre creamos un movimiento "haber" de ajuste que descuenta la deuda
+  // del venta original. Si hubo cobro, también creamos otro movimiento "debe" que
+  // deshace el cobro. Neto sobre cuenta corriente:
+  //  - cuenta_corriente: saldo baja en total (se revierte la deuda)
+  //  - otros medios: saldo queda igual (ambos ajustes se netean)
+  const saldoAfterAnulVenta = saldoAnterior - venta.total;
+  const saldoFinal =
+    venta.medioPago === 'cuenta_corriente' ? saldoAfterAnulVenta : saldoAnterior;
+
+  const batch = writeBatch(db);
+
+  venta.items.forEach((it) => {
+    batch.update(doc(db, 'productos', it.productoId), {
+      stockActual: increment(it.cantidad),
+      updatedAt: Timestamp.now(),
+    });
+  });
+
+  const movAnulVentaRef = doc(collection(db, 'movimientos'));
+  batch.set(movAnulVentaRef, {
+    cuentaId: venta.cuentaCorrienteId,
+    tipo: 'haber',
+    concepto: 'ajuste',
+    descripcion: `Anulación venta #${venta.numero}`,
+    monto: venta.total,
+    saldoAnterior,
+    saldoPosterior: saldoAfterAnulVenta,
+    fecha: Timestamp.now(),
+    createdAt: Timestamp.now(),
+  });
+
+  let movAnulPagoId: string | undefined;
+  if (venta.medioPago !== 'cuenta_corriente') {
+    const movAnulPagoRef = doc(collection(db, 'movimientos'));
+    movAnulPagoId = movAnulPagoRef.id;
+    batch.set(movAnulPagoRef, {
+      cuentaId: venta.cuentaCorrienteId,
+      tipo: 'debe',
+      concepto: 'ajuste',
+      descripcion: `Anulación cobro venta #${venta.numero}`,
+      monto: venta.total,
+      saldoAnterior: saldoAfterAnulVenta,
+      saldoPosterior: saldoAnterior,
+      fecha: Timestamp.now(),
+      createdAt: Timestamp.now(),
+    });
+  }
+
+  batch.update(doc(db, 'cuentas_corrientes', venta.cuentaCorrienteId), {
+    saldoActual: saldoFinal,
+    updatedAt: Timestamp.now(),
+  });
+
+  batch.update(doc(db, 'ventas', ventaId), {
+    estado: 'anulada',
+    anuladaAt: Timestamp.now(),
+    movimientoAnulacionVentaId: movAnulVentaRef.id,
+    ...(movAnulPagoId ? { movimientoAnulacionPagoId: movAnulPagoId } : {}),
+  });
+
+  await batch.commit();
 }

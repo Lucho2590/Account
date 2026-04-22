@@ -130,6 +130,53 @@ export interface Contacto {
 
 export type ContactoFormData = Omit<Contacto, 'id' | 'createdAt' | 'updatedAt'>;
 
+// Tipos para Ventas
+export type MedioPago = 'efectivo' | 'transferencia' | 'tarjeta' | 'cheque' | 'cuenta_corriente';
+export type EstadoVenta = 'completada' | 'anulada';
+
+export interface VentaItem {
+  productoId: string;
+  productoCodigo: string;
+  productoNombre: string;
+  unidad: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+}
+
+export interface Venta {
+  id: string;
+  numero: number;
+  clienteId: string;
+  clienteNombre: string;
+  cuentaCorrienteId: string;
+  fecha: string;
+  items: VentaItem[];
+  total: number;
+  medioPago: MedioPago;
+  estado: EstadoVenta;
+  movimientoVentaId: string;
+  movimientoPagoId?: string;
+  movimientoAnulacionVentaId?: string;
+  movimientoAnulacionPagoId?: string;
+  comprobanteTipo?: string;
+  comprobanteNumero?: string;
+  observaciones?: string;
+  createdAt: string;
+  anuladaAt?: string;
+}
+
+export type VentaFormData = {
+  clienteId: string;
+  fecha: string;
+  items: VentaItem[];
+  total: number;
+  medioPago: MedioPago;
+  comprobanteTipo?: string;
+  comprobanteNumero?: string;
+  observaciones?: string;
+};
+
 // Tipos para Dashboard
 export interface ResumenCuentas {
   totalCobrar: number;

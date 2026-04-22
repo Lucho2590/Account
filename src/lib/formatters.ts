@@ -73,6 +73,48 @@ export function formatTipoMovimiento(tipo: string): string {
   return tipo === 'debe' ? 'Debe' : 'Haber';
 }
 
+// Estado semántico del saldo, según tipo de entidad
+export type SaldoEstado = 'al_dia' | 'a_cobrar' | 'a_pagar' | 'a_favor_cliente' | 'a_favor_proveedor';
+
+export function getSaldoEstado(
+  saldo: number,
+  tipoEntidad: 'cliente' | 'proveedor',
+): SaldoEstado {
+  if (saldo === 0) return 'al_dia';
+  if (tipoEntidad === 'cliente') {
+    return saldo > 0 ? 'a_cobrar' : 'a_favor_cliente';
+  }
+  return saldo > 0 ? 'a_pagar' : 'a_favor_proveedor';
+}
+
+export function formatSaldoEstado(estado: SaldoEstado): string {
+  const map: Record<SaldoEstado, string> = {
+    al_dia: 'Al día',
+    a_cobrar: 'Nos debe',
+    a_pagar: 'Le debemos',
+    a_favor_cliente: 'Saldo a favor',
+    a_favor_proveedor: 'Anticipo a favor',
+  };
+  return map[estado];
+}
+
+// Formatear medio de pago
+export function formatMedioPago(medio: string): string {
+  const map: Record<string, string> = {
+    efectivo: 'Efectivo',
+    transferencia: 'Transferencia',
+    tarjeta: 'Tarjeta',
+    cheque: 'Cheque',
+    cuenta_corriente: 'Cuenta corriente',
+  };
+  return map[medio] || medio;
+}
+
+// Formatear estado de venta
+export function formatEstadoVenta(estado: string): string {
+  return estado === 'anulada' ? 'Anulada' : 'Completada';
+}
+
 // Formatear concepto de movimiento
 export function formatConcepto(concepto: string): string {
   const conceptos: Record<string, string> = {

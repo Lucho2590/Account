@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -12,15 +14,18 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  TrendingUp,
-  TrendingDown,
+  ArrowDownCircle,
+  ArrowUpCircle,
   Users,
   Truck,
   AlertTriangle,
-  ArrowUpRight,
-  ArrowDownRight,
+  Package,
+  Plus,
+  ArrowRight,
+  Wallet,
 } from 'lucide-react';
 import { formatCurrency, formatDateShort, formatConcepto } from '@/lib/formatters';
+import { BalanceDisplay } from '@/components/cuentas/balance-display';
 import {
   getResumenCuentas,
   getAlertasStock,
@@ -29,23 +34,34 @@ import {
   getClientes,
   getProveedores,
 } from '@/lib/firebase-db';
-import type { ResumenCuentas, AlertaStock, Movimiento } from '@/types';
+import type {
+  ResumenCuentas,
+  AlertaStock,
+  Movimiento,
+  CuentaCorriente,
+  TipoEntidad,
+} from '@/types';
+import { cn } from '@/lib/utils';
+
+interface CuentaConEntidad extends CuentaCorriente {
+  entidadNombre: string;
+}
 
 export default function DashboardPage() {
   const [resumen, setResumen] = useState<ResumenCuentas | null>(null);
   const [alertas, setAlertas] = useState<AlertaStock[]>([]);
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
-  const [entidades, setEntidades] = useState<Record<string, string>>({});
+  const [cuentas, setCuentas] = useState<CuentaConEntidad[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [resumenData, alertasData, movimientosData, cuentas, clientes, proveedores] =
+        const [resumenData, alertasData, movimientosData, cuentasData, clientes, proveedores] =
           await Promise.all([
             getResumenCuentas(),
             getAlertasStock(),
-            getUltimosMovimientos(5),
+            getUltimosMovimientos(8),
             getCuentasCorrientes(),
             getClientes(),
             getProveedores(),
@@ -55,18 +71,18 @@ export default function DashboardPage() {
         setAlertas(alertasData);
         setMovimientos(movimientosData);
 
-        // Crear mapa de entidades para mostrar nombres
-        const entidadesMap: Record<string, string> = {};
-        cuentas.forEach((cuenta) => {
-          if (cuenta.tipoEntidad === 'cliente') {
-            const cliente = clientes.find((c) => c.id === cuenta.entidadId);
-            if (cliente) entidadesMap[cuenta.id] = cliente.razonSocial;
+        const cuentasEnriched: CuentaConEntidad[] = cuentasData.map((c) => {
+          let entidadNombre = 'N/A';
+          if (c.tipoEntidad === 'cliente') {
+            entidadNombre =
+              clientes.find((cli) => cli.id === c.entidadId)?.razonSocial || 'Desconocido';
           } else {
-            const proveedor = proveedores.find((p) => p.id === cuenta.entidadId);
-            if (proveedor) entidadesMap[cuenta.id] = proveedor.razonSocial;
+            entidadNombre =
+              proveedores.find((p) => p.id === c.entidadId)?.razonSocial || 'Desconocido';
           }
+          return { ...c, entidadNombre };
         });
-        setEntidades(entidadesMap);
+        setCuentas(cuentasEnriched);
       } catch (error) {
         console.error('Error loading dashboard data:', error);
       } finally {
@@ -77,18 +93,40 @@ export default function DashboardPage() {
     loadData();
   }, []);
 
+  const cuentaPorId = useMemo(() => {
+    const map = new Map<string, CuentaConEntidad>();
+    cuentas.forEach((c) => map.set(c.id, c));
+    return map;
+  }, [cuentas]);
+
+  const topProveedores = useMemo(
+    () =>
+      cuentas
+        .filter((c) => c.tipoEntidad === 'proveedor' && c.saldoActual > 0)
+        .sort((a, b) => b.saldoActual - a.saldoActual)
+        .slice(0, 5),
+    [cuentas],
+  );
+
+  const topClientes = useMemo(
+    () =>
+      cuentas
+        .filter((c) => c.tipoEntidad === 'cliente' && c.saldoActual > 0)
+        .sort((a, b) => b.saldoActual - a.saldoActual)
+        .slice(0, 5),
+    [cuentas],
+  );
+
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="pb-2">
-                <div className="h-4 bg-gray-200 rounded w-1/2" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-gray-200 rounded w-3/4" />
+            <Card key={i}>
+              <CardContent className="py-6">
+                <div className="h-5 w-1/2 animate-pulse rounded bg-muted" />
+                <div className="mt-3 h-8 w-3/4 animate-pulse rounded bg-muted" />
               </CardContent>
             </Card>
           ))}
@@ -99,171 +137,316 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Dashboard</h1>
-
-      {/* Widgets principales */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total a Cobrar
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(resumen?.totalCobrar || 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {resumen?.cantidadClientesDeudores || 0} clientes con saldo
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total a Pagar
-            </CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {formatCurrency(resumen?.totalPagar || 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {resumen?.cantidadProveedoresAcreedores || 0} proveedores acreedores
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Clientes Activos
-            </CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {resumen?.cantidadClientesDeudores || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">con cuenta corriente</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Alertas Stock
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{alertas.length}</div>
-            <p className="text-xs text-muted-foreground">productos bajo mínimo</p>
-          </CardContent>
-        </Card>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Resumen general
+          </p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">Hola 👋</h1>
+          <p className="text-sm text-muted-foreground">
+            Estado de tus cuentas corrientes al día de hoy.
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/cuentas">
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo movimiento
+          </Link>
+        </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Últimos movimientos */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Últimos Movimientos</CardTitle>
-            <CardDescription>Movimientos recientes en cuentas corrientes</CardDescription>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard
+          label="Total a cobrar"
+          value={formatCurrency(resumen?.totalCobrar || 0)}
+          sub={`${resumen?.cantidadClientesDeudores || 0} clientes con saldo`}
+          tone="positive"
+          icon={<ArrowDownCircle className="h-5 w-5" />}
+          href="/cuentas"
+        />
+        <KpiCard
+          label="Total a pagar"
+          value={formatCurrency(resumen?.totalPagar || 0)}
+          sub={`${resumen?.cantidadProveedoresAcreedores || 0} proveedores`}
+          tone="negative"
+          icon={<ArrowUpCircle className="h-5 w-5" />}
+          href="/cuentas"
+        />
+        <KpiCard
+          label="Balance neto"
+          value={formatCurrency(
+            (resumen?.totalCobrar || 0) - (resumen?.totalPagar || 0),
+          )}
+          sub="Cobrar − pagar"
+          tone={
+            (resumen?.totalCobrar || 0) - (resumen?.totalPagar || 0) >= 0
+              ? 'positive'
+              : 'negative'
+          }
+          icon={<Wallet className="h-5 w-5" />}
+        />
+        <KpiCard
+          label="Alertas de stock"
+          value={`${alertas.length}`}
+          sub="productos bajo mínimo"
+          tone={alertas.length > 0 ? 'warning' : 'neutral'}
+          icon={<AlertTriangle className="h-5 w-5" />}
+          href="/productos"
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Últimos movimientos</CardTitle>
+              <p className="text-xs text-muted-foreground">Actividad reciente en cuentas</p>
+            </div>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/cuentas">
+                Ver todo
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Link>
+            </Button>
           </CardHeader>
           <CardContent>
             {movimientos.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No hay movimientos registrados
-              </p>
+              <EmptyState
+                icon={<Wallet className="h-10 w-10" />}
+                title="Sin movimientos"
+                description="Registrá el primer movimiento desde una cuenta."
+              />
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Entidad</TableHead>
-                    <TableHead>Concepto</TableHead>
-                    <TableHead className="text-right">Monto</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {movimientos.map((mov) => (
-                    <TableRow key={mov.id}>
-                      <TableCell className="text-sm">
-                        {formatDateShort(mov.fecha)}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {entidades[mov.cuentaId] || 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={mov.tipo === 'debe' ? 'default' : 'secondary'}>
-                          {formatConcepto(mov.concepto)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span
-                          className={`flex items-center justify-end gap-1 ${
-                            mov.tipo === 'debe' ? 'text-green-600' : 'text-red-600'
-                          }`}
-                        >
-                          {mov.tipo === 'debe' ? (
-                            <ArrowUpRight className="h-3 w-3" />
-                          ) : (
-                            <ArrowDownRight className="h-3 w-3" />
-                          )}
-                          {formatCurrency(mov.monto)}
-                        </span>
-                      </TableCell>
+              <div className="overflow-hidden rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Entidad</TableHead>
+                      <TableHead>Concepto</TableHead>
+                      <TableHead className="text-right">Monto</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {movimientos.map((mov) => {
+                      const cuenta = cuentaPorId.get(mov.cuentaId);
+                      const tipoEntidad: TipoEntidad = cuenta?.tipoEntidad || 'cliente';
+                      const effect = tipoEntidad === 'cliente'
+                        ? mov.tipo === 'debe' ? 'aumenta' : 'disminuye'
+                        : mov.tipo === 'haber' ? 'aumenta' : 'disminuye';
+                      return (
+                        <TableRow key={mov.id}>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {formatDateShort(mov.fecha)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {tipoEntidad === 'proveedor' ? (
+                                <Truck className="h-3.5 w-3.5 text-muted-foreground" />
+                              ) : (
+                                <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                              )}
+                              <span className="text-sm font-medium">
+                                {cuenta?.entidadNombre || '—'}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="font-normal">
+                              {formatConcepto(mov.concepto)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span
+                              className={cn(
+                                'inline-flex items-center justify-end gap-1 text-sm font-semibold tabular-nums',
+                                effect === 'aumenta' ? 'text-rose-600' : 'text-emerald-600',
+                              )}
+                            >
+                              {effect === 'aumenta' ? (
+                                <ArrowUpCircle className="h-3.5 w-3.5" />
+                              ) : (
+                                <ArrowDownCircle className="h-3.5 w-3.5" />
+                              )}
+                              {formatCurrency(mov.monto)}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Alertas de stock */}
+        <div className="space-y-6">
+          <TopCuentasCard
+            title="Top a pagar"
+            icon={<Truck className="h-4 w-4" />}
+            items={topProveedores}
+            tipo="proveedor"
+            emptyLabel="Sin saldos pendientes con proveedores."
+          />
+          <TopCuentasCard
+            title="Top a cobrar"
+            icon={<Users className="h-4 w-4" />}
+            items={topClientes}
+            tipo="cliente"
+            emptyLabel="Sin saldos pendientes de clientes."
+          />
+        </div>
+      </div>
+
+      {alertas.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Alertas de Stock</CardTitle>
-            <CardDescription>Productos con stock bajo mínimo</CardDescription>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              Alertas de stock
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {alertas.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No hay alertas de stock
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Producto</TableHead>
-                    <TableHead className="text-right">Stock</TableHead>
-                    <TableHead className="text-right">Mínimo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {alertas.map((alerta) => (
-                    <TableRow key={alerta.productoId}>
-                      <TableCell className="font-medium">
-                        {alerta.productoNombre}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Badge variant="destructive">{alerta.stockActual}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {alerta.stockMinimo}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {alertas.slice(0, 6).map((a) => (
+                <Link
+                  key={a.productoId}
+                  href={`/productos/${a.productoId}/editar`}
+                  className="flex items-center justify-between rounded-md border p-3 transition hover:border-primary/60"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-amber-50 text-amber-600 dark:bg-amber-950/40">
+                      <Package className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{a.productoNombre}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Mínimo: {a.stockMinimo}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="destructive" className="tabular-nums">
+                    {a.stockActual}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
           </CardContent>
         </Card>
+      )}
+    </div>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  sub,
+  tone,
+  icon,
+  href,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  tone: 'positive' | 'negative' | 'neutral' | 'warning';
+  icon: React.ReactNode;
+  href?: string;
+}) {
+  const toneStyle = {
+    positive: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
+    negative: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',
+    warning: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
+    neutral: 'bg-muted text-foreground',
+  }[tone];
+
+  const inner = (
+    <CardContent className="flex items-center gap-4 py-5">
+      <div className={`flex h-10 w-10 items-center justify-center rounded-full ${toneStyle}`}>
+        {icon}
       </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          {label}
+        </p>
+        <p className="truncate text-xl font-bold tabular-nums">{value}</p>
+        <p className="truncate text-xs text-muted-foreground">{sub}</p>
+      </div>
+    </CardContent>
+  );
+
+  return (
+    <Card className={href ? 'transition hover:border-primary/60 hover:shadow-sm' : undefined}>
+      {href ? <Link href={href}>{inner}</Link> : inner}
+    </Card>
+  );
+}
+
+function TopCuentasCard({
+  title,
+  icon,
+  items,
+  tipo,
+  emptyLabel,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  items: CuentaConEntidad[];
+  tipo: TipoEntidad;
+  emptyLabel: string;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+          {icon}
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {items.length === 0 ? (
+          <p className="py-4 text-center text-xs text-muted-foreground">{emptyLabel}</p>
+        ) : (
+          <ul className="space-y-1">
+            {items.map((c) => (
+              <li key={c.id}>
+                <Link
+                  href={`/${tipo === 'cliente' ? 'clientes' : 'proveedores'}/${c.entidadId}`}
+                  className="flex items-center justify-between rounded-md px-2 py-1.5 transition hover:bg-muted"
+                >
+                  <span className="truncate text-sm font-medium">{c.entidadNombre}</span>
+                  <BalanceDisplay
+                    saldo={c.saldoActual}
+                    tipoEntidad={tipo}
+                    size="sm"
+                    showLabel={false}
+                    align="right"
+                  />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function EmptyState({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+      <div className="text-muted-foreground">{icon}</div>
+      <p className="text-sm font-medium">{title}</p>
+      <p className="text-xs text-muted-foreground">{description}</p>
     </div>
   );
 }
