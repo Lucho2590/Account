@@ -90,77 +90,124 @@ export function VentasTable({ ventas }: { ventas: Venta[] }) {
         </Select>
       </div>
 
-      <div className="overflow-hidden rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/40 hover:bg-muted/40">
-              <TableHead className="w-20">N°</TableHead>
-              <TableHead className="w-[110px]">Fecha</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Items</TableHead>
-              <TableHead>Medio</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="w-10" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtradas.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="py-12 text-center text-muted-foreground">
-                  {ventas.length === 0 ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <ShoppingCart className="h-8 w-8 opacity-40" />
-                      <span>Aún no registraste ventas.</span>
-                    </div>
-                  ) : (
-                    'No hay ventas que coincidan con el filtro.'
-                  )}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtradas.map((v) => (
-                <TableRow key={v.id} className={cn(v.estado === 'anulada' && 'opacity-60')}>
-                  <TableCell className="font-medium tabular-nums">#{v.numero}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDateShort(v.fecha)}
-                  </TableCell>
-                  <TableCell className="font-medium">{v.clienteNombre}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {v.items.length} {v.items.length === 1 ? 'item' : 'items'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="font-normal">
-                      {formatMedioPago(v.medioPago)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-semibold tabular-nums">
-                    {formatCurrency(v.total)}
-                  </TableCell>
-                  <TableCell>
-                    {v.estado === 'anulada' ? (
-                      <Badge variant="destructive" className="font-normal">
-                        Anulada
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-emerald-100 font-normal text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300">
-                        Completada
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Button asChild variant="ghost" size="icon" className="h-8 w-8">
-                      <Link href={`/ventas/${v.id}`} aria-label="Ver venta">
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </TableCell>
+      {filtradas.length === 0 ? (
+        <div className="rounded-md border py-12 text-center text-muted-foreground">
+          {ventas.length === 0 ? (
+            <div className="flex flex-col items-center gap-2">
+              <ShoppingCart className="h-8 w-8 opacity-40" />
+              <span>Aún no registraste ventas.</span>
+            </div>
+          ) : (
+            'No hay ventas que coincidan con el filtro.'
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="hidden overflow-hidden rounded-md border md:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="w-20">N°</TableHead>
+                  <TableHead className="w-[110px]">Fecha</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Items</TableHead>
+                  <TableHead>Medio</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="w-10" />
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {filtradas.map((v) => (
+                  <TableRow key={v.id} className={cn(v.estado === 'anulada' && 'opacity-60')}>
+                    <TableCell className="font-medium tabular-nums">#{v.numero}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDateShort(v.fecha)}
+                    </TableCell>
+                    <TableCell className="font-medium">{v.clienteNombre}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {v.items.length} {v.items.length === 1 ? 'item' : 'items'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-normal">
+                        {formatMedioPago(v.medioPago)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">
+                      {formatCurrency(v.total)}
+                    </TableCell>
+                    <TableCell>
+                      {v.estado === 'anulada' ? (
+                        <Badge variant="destructive" className="font-normal">
+                          Anulada
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-emerald-100 font-normal text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300">
+                          Completada
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                        <Link href={`/ventas/${v.id}`} aria-label="Ver venta">
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex flex-col gap-2 md:hidden">
+            {filtradas.map((v) => (
+              <Link
+                key={v.id}
+                href={`/ventas/${v.id}`}
+                className={cn(
+                  'block rounded-md border bg-card p-3 shadow-sm transition-colors active:bg-muted/60',
+                  v.estado === 'anulada' && 'opacity-60',
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold tabular-nums">#{v.numero}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateShort(v.fecha)}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 truncate text-sm font-medium">{v.clienteNombre}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold tabular-nums">
+                      {formatCurrency(v.total)}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {v.items.length} {v.items.length === 1 ? 'item' : 'items'}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <Badge variant="outline" className="font-normal">
+                    {formatMedioPago(v.medioPago)}
+                  </Badge>
+                  {v.estado === 'anulada' ? (
+                    <Badge variant="destructive" className="font-normal">
+                      Anulada
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-emerald-100 font-normal text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      Completada
+                    </Badge>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

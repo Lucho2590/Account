@@ -127,51 +127,98 @@ export function MovimientosTable({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/40 hover:bg-muted/40">
-              <TableHead className="w-[110px]">Fecha</TableHead>
-              <TableHead>Concepto</TableHead>
-              <TableHead>Detalle</TableHead>
-              <TableHead className="text-right">Monto</TableHead>
-              <TableHead className="text-right">Saldo</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtrados.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
-                  {movimientos.length === 0
-                    ? 'Aún no hay movimientos en esta cuenta.'
-                    : 'No hay movimientos que coincidan con el filtro.'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtrados.map((mov) => {
-                const effect = getEffect(mov);
-                return (
-                  <TableRow key={mov.id}>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDateShort(mov.fecha)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="font-normal">
-                        {formatConcepto(mov.concepto)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col leading-tight">
-                        <span className="text-sm">{mov.descripcion}</span>
-                        {(mov.comprobanteTipo || mov.comprobanteNumero) && (
-                          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                            <Receipt className="h-3 w-3" />
-                            {mov.comprobanteTipo} {mov.comprobanteNumero}
-                          </span>
-                        )}
+      {filtrados.length === 0 ? (
+        <div className="rounded-md border py-12 text-center text-muted-foreground">
+          {movimientos.length === 0
+            ? 'Aún no hay movimientos en esta cuenta.'
+            : 'No hay movimientos que coincidan con el filtro.'}
+        </div>
+      ) : (
+        <>
+          <div className="hidden overflow-hidden rounded-md border md:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="w-[110px]">Fecha</TableHead>
+                  <TableHead>Concepto</TableHead>
+                  <TableHead>Detalle</TableHead>
+                  <TableHead className="text-right">Monto</TableHead>
+                  <TableHead className="text-right">Saldo</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtrados.map((mov) => {
+                  const effect = getEffect(mov);
+                  return (
+                    <TableRow key={mov.id}>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDateShort(mov.fecha)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-normal">
+                          {formatConcepto(mov.concepto)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col leading-tight">
+                          <span className="text-sm">{mov.descripcion}</span>
+                          {(mov.comprobanteTipo || mov.comprobanteNumero) && (
+                            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <Receipt className="h-3 w-3" />
+                              {mov.comprobanteTipo} {mov.comprobanteNumero}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span
+                          className={cn(
+                            'inline-flex items-center justify-end gap-1 text-sm font-semibold tabular-nums',
+                            effect === 'aumenta' ? 'text-rose-600' : 'text-emerald-600',
+                          )}
+                        >
+                          {effect === 'aumenta' ? (
+                            <ArrowUpCircle className="h-3.5 w-3.5" />
+                          ) : (
+                            <ArrowDownCircle className="h-3.5 w-3.5" />
+                          )}
+                          {formatCurrency(mov.monto)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right text-sm font-medium tabular-nums">
+                        {formatCurrency(mov.saldoPosterior)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex flex-col gap-2 md:hidden">
+            {filtrados.map((mov) => {
+              const effect = getEffect(mov);
+              return (
+                <div key={mov.id} className="rounded-md border bg-card p-3 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="font-normal">
+                          {formatConcepto(mov.concepto)}
+                        </Badge>
+                        <span className="text-[11px] text-muted-foreground">
+                          {formatDateShort(mov.fecha)}
+                        </span>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-right">
+                      <p className="mt-1 text-sm">{mov.descripcion}</p>
+                      {(mov.comprobanteTipo || mov.comprobanteNumero) && (
+                        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <Receipt className="h-3 w-3" />
+                          {mov.comprobanteTipo} {mov.comprobanteNumero}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
                       <span
                         className={cn(
                           'inline-flex items-center justify-end gap-1 text-sm font-semibold tabular-nums',
@@ -185,17 +232,17 @@ export function MovimientosTable({
                         )}
                         {formatCurrency(mov.monto)}
                       </span>
-                    </TableCell>
-                    <TableCell className="text-right text-sm font-medium tabular-nums">
-                      {formatCurrency(mov.saldoPosterior)}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                      <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+                        Saldo {formatCurrency(mov.saldoPosterior)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }

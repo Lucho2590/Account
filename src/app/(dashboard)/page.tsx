@@ -137,17 +137,17 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Resumen general
           </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">Hola 👋</h1>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Hola 👋</h1>
           <p className="text-sm text-muted-foreground">
             Estado de tus cuentas corrientes al día de hoy.
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="w-full sm:w-auto">
           <Link href="/cuentas">
             <Plus className="mr-2 h-4 w-4" />
             Nuevo movimiento
@@ -217,66 +217,120 @@ export default function DashboardPage() {
                 description="Registrá el primer movimiento desde una cuenta."
               />
             ) : (
-              <div className="overflow-hidden rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Entidad</TableHead>
-                      <TableHead>Concepto</TableHead>
-                      <TableHead className="text-right">Monto</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {movimientos.map((mov) => {
-                      const cuenta = cuentaPorId.get(mov.cuentaId);
-                      const tipoEntidad: TipoEntidad = cuenta?.tipoEntidad || 'cliente';
-                      const effect = tipoEntidad === 'cliente'
-                        ? mov.tipo === 'debe' ? 'aumenta' : 'disminuye'
-                        : mov.tipo === 'haber' ? 'aumenta' : 'disminuye';
-                      return (
-                        <TableRow key={mov.id}>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {formatDateShort(mov.fecha)}
-                          </TableCell>
-                          <TableCell>
+              <>
+                <div className="hidden overflow-hidden rounded-md border md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Entidad</TableHead>
+                        <TableHead>Concepto</TableHead>
+                        <TableHead className="text-right">Monto</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {movimientos.map((mov) => {
+                        const cuenta = cuentaPorId.get(mov.cuentaId);
+                        const tipoEntidad: TipoEntidad = cuenta?.tipoEntidad || 'cliente';
+                        const effect = tipoEntidad === 'cliente'
+                          ? mov.tipo === 'debe' ? 'aumenta' : 'disminuye'
+                          : mov.tipo === 'haber' ? 'aumenta' : 'disminuye';
+                        return (
+                          <TableRow key={mov.id}>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {formatDateShort(mov.fecha)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {tipoEntidad === 'proveedor' ? (
+                                  <Truck className="h-3.5 w-3.5 text-muted-foreground" />
+                                ) : (
+                                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                                )}
+                                <span className="text-sm font-medium">
+                                  {cuenta?.entidadNombre || '—'}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="font-normal">
+                                {formatConcepto(mov.concepto)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span
+                                className={cn(
+                                  'inline-flex items-center justify-end gap-1 text-sm font-semibold tabular-nums',
+                                  effect === 'aumenta' ? 'text-rose-600' : 'text-emerald-600',
+                                )}
+                              >
+                                {effect === 'aumenta' ? (
+                                  <ArrowUpCircle className="h-3.5 w-3.5" />
+                                ) : (
+                                  <ArrowDownCircle className="h-3.5 w-3.5" />
+                                )}
+                                {formatCurrency(mov.monto)}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <ul className="flex flex-col gap-2 md:hidden">
+                  {movimientos.map((mov) => {
+                    const cuenta = cuentaPorId.get(mov.cuentaId);
+                    const tipoEntidad: TipoEntidad = cuenta?.tipoEntidad || 'cliente';
+                    const effect = tipoEntidad === 'cliente'
+                      ? mov.tipo === 'debe' ? 'aumenta' : 'disminuye'
+                      : mov.tipo === 'haber' ? 'aumenta' : 'disminuye';
+                    return (
+                      <li
+                        key={mov.id}
+                        className="rounded-md border bg-card p-3 shadow-sm"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               {tipoEntidad === 'proveedor' ? (
                                 <Truck className="h-3.5 w-3.5 text-muted-foreground" />
                               ) : (
                                 <Users className="h-3.5 w-3.5 text-muted-foreground" />
                               )}
-                              <span className="text-sm font-medium">
+                              <span className="truncate text-sm font-medium">
                                 {cuenta?.entidadNombre || '—'}
                               </span>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="font-normal">
-                              {formatConcepto(mov.concepto)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <span
-                              className={cn(
-                                'inline-flex items-center justify-end gap-1 text-sm font-semibold tabular-nums',
-                                effect === 'aumenta' ? 'text-rose-600' : 'text-emerald-600',
-                              )}
-                            >
-                              {effect === 'aumenta' ? (
-                                <ArrowUpCircle className="h-3.5 w-3.5" />
-                              ) : (
-                                <ArrowDownCircle className="h-3.5 w-3.5" />
-                              )}
-                              {formatCurrency(mov.monto)}
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                            <div className="mt-1 flex items-center gap-2">
+                              <Badge variant="outline" className="font-normal">
+                                {formatConcepto(mov.concepto)}
+                              </Badge>
+                              <span className="text-[11px] text-muted-foreground">
+                                {formatDateShort(mov.fecha)}
+                              </span>
+                            </div>
+                          </div>
+                          <span
+                            className={cn(
+                              'inline-flex shrink-0 items-center gap-1 text-sm font-semibold tabular-nums',
+                              effect === 'aumenta' ? 'text-rose-600' : 'text-emerald-600',
+                            )}
+                          >
+                            {effect === 'aumenta' ? (
+                              <ArrowUpCircle className="h-3.5 w-3.5" />
+                            ) : (
+                              <ArrowDownCircle className="h-3.5 w-3.5" />
+                            )}
+                            {formatCurrency(mov.monto)}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
             )}
           </CardContent>
         </Card>

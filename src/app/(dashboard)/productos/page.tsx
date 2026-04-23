@@ -92,78 +92,153 @@ export default function ProductosPage() {
   const productosVenta = filteredProductos.filter((p) => p.tipo === 'venta');
   const materiaPrima = filteredProductos.filter((p) => p.tipo === 'materia_prima');
 
-  const renderTable = (items: Producto[]) => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Código</TableHead>
-          <TableHead>Nombre</TableHead>
-          <TableHead>Proveedor</TableHead>
-          <TableHead className="text-right">Stock</TableHead>
-          <TableHead className="text-right">Precio Compra</TableHead>
-          <TableHead className="text-right">Precio Venta</TableHead>
-          <TableHead>Estado</TableHead>
-          <TableHead className="text-right">Acciones</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {items.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-              No hay productos en esta categoría
-            </TableCell>
-          </TableRow>
-        ) : (
-          items.map((producto) => (
-            <TableRow key={producto.id}>
-              <TableCell className="font-mono">{producto.codigo}</TableCell>
-              <TableCell className="font-medium">{producto.nombre}</TableCell>
-              <TableCell>{getProveedorNombre(producto.proveedorId)}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex items-center justify-end gap-2">
-                  {producto.stockActual <= producto.stockMinimo && (
-                    <AlertTriangle className="h-4 w-4 text-orange-500" />
-                  )}
+  const renderProductos = (items: Producto[]) => {
+    if (items.length === 0) {
+      return (
+        <div className="py-8 text-center text-muted-foreground">
+          No hay productos en esta categoría
+        </div>
+      );
+    }
+    return (
+      <>
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Código</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Proveedor</TableHead>
+                <TableHead className="text-right">Stock</TableHead>
+                <TableHead className="text-right">Precio Compra</TableHead>
+                <TableHead className="text-right">Precio Venta</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((producto) => (
+                <TableRow key={producto.id}>
+                  <TableCell className="font-mono">{producto.codigo}</TableCell>
+                  <TableCell className="font-medium">{producto.nombre}</TableCell>
+                  <TableCell>{getProveedorNombre(producto.proveedorId)}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {producto.stockActual <= producto.stockMinimo && (
+                        <AlertTriangle className="h-4 w-4 text-orange-500" />
+                      )}
+                      <span
+                        className={
+                          producto.stockActual <= producto.stockMinimo
+                            ? 'text-orange-600 font-medium'
+                            : ''
+                        }
+                      >
+                        {producto.stockActual} {producto.unidad}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(producto.precioCompra)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(producto.precioVenta)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={producto.activo ? 'default' : 'secondary'}>
+                      {producto.activo ? 'Activo' : 'Inactivo'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="icon" asChild>
+                        <Link href={`/productos/${producto.id}/editar`}>
+                          <Pencil className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleteDialog({ open: true, producto })}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="flex flex-col gap-2 md:hidden">
+          {items.map((producto) => {
+            const stockBajo = producto.stockActual <= producto.stockMinimo;
+            return (
+              <div key={producto.id} className="rounded-md border bg-card p-3 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        {producto.codigo}
+                      </span>
+                      <Badge
+                        variant={producto.activo ? 'default' : 'secondary'}
+                        className="h-5 text-[10px]"
+                      >
+                        {producto.activo ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 truncate text-sm font-semibold">{producto.nombre}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {getProveedorNombre(producto.proveedorId)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                      <Link
+                        href={`/productos/${producto.id}/editar`}
+                        aria-label="Editar"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setDeleteDialog({ open: true, producto })}
+                      aria-label="Eliminar"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
                   <span
                     className={
-                      producto.stockActual <= producto.stockMinimo
-                        ? 'text-orange-600 font-medium'
-                        : ''
+                      stockBajo
+                        ? 'inline-flex items-center gap-1 font-medium text-orange-600'
+                        : 'text-muted-foreground'
                     }
                   >
-                    {producto.stockActual} {producto.unidad}
+                    {stockBajo && <AlertTriangle className="h-3.5 w-3.5" />}
+                    Stock: {producto.stockActual} {producto.unidad}
+                  </span>
+                  <span className="tabular-nums text-muted-foreground">
+                    Compra {formatCurrency(producto.precioCompra)}
+                  </span>
+                  <span className="font-semibold tabular-nums">
+                    Venta {formatCurrency(producto.precioVenta)}
                   </span>
                 </div>
-              </TableCell>
-              <TableCell className="text-right">{formatCurrency(producto.precioCompra)}</TableCell>
-              <TableCell className="text-right">{formatCurrency(producto.precioVenta)}</TableCell>
-              <TableCell>
-                <Badge variant={producto.activo ? 'default' : 'secondary'}>
-                  {producto.activo ? 'Activo' : 'Inactivo'}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <Button variant="ghost" size="icon" asChild>
-                    <Link href={`/productos/${producto.id}/editar`}>
-                      <Pencil className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setDeleteDialog({ open: true, producto })}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
-  );
+              </div>
+            );
+          })}
+        </div>
+      </>
+    );
+  };
 
   if (loading) {
     return (
@@ -180,8 +255,8 @@ export default function ProductosPage() {
         <p className="text-muted-foreground">Gestiona el inventario de productos y materias primas</p>
       </div>
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por código o nombre..."
@@ -190,7 +265,7 @@ export default function ProductosPage() {
             className="pl-9"
           />
         </div>
-        <Button asChild>
+        <Button asChild className="w-full sm:w-auto">
           <Link href="/productos/nuevo">
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Producto
@@ -199,11 +274,11 @@ export default function ProductosPage() {
       </div>
 
       <Tabs defaultValue="venta">
-        <TabsList>
-          <TabsTrigger value="venta">
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="venta" className="flex-1 sm:flex-initial">
             Productos de Venta ({productosVenta.length})
           </TabsTrigger>
-          <TabsTrigger value="materia_prima">
+          <TabsTrigger value="materia_prima" className="flex-1 sm:flex-initial">
             Materia Prima ({materiaPrima.length})
           </TabsTrigger>
         </TabsList>
@@ -213,7 +288,7 @@ export default function ProductosPage() {
               <CardTitle>Productos de Venta</CardTitle>
               <CardDescription>Productos destinados a la venta directa</CardDescription>
             </CardHeader>
-            <CardContent>{renderTable(productosVenta)}</CardContent>
+            <CardContent>{renderProductos(productosVenta)}</CardContent>
           </Card>
         </TabsContent>
         <TabsContent value="materia_prima">
@@ -222,7 +297,7 @@ export default function ProductosPage() {
               <CardTitle>Materia Prima</CardTitle>
               <CardDescription>Insumos y materiales de producción</CardDescription>
             </CardHeader>
-            <CardContent>{renderTable(materiaPrima)}</CardContent>
+            <CardContent>{renderProductos(materiaPrima)}</CardContent>
           </Card>
         </TabsContent>
       </Tabs>

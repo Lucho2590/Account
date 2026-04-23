@@ -77,14 +77,14 @@ export default function VentasPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Ventas</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Ventas</h1>
           <p className="text-sm text-muted-foreground">
             Registrá operaciones de venta con stock, cobro y cuenta corriente
           </p>
         </div>
-        <Button asChild size="lg" className="gap-2">
+        <Button asChild size="lg" className="w-full gap-2 sm:w-auto">
           <Link href="/ventas/nueva">
             <Plus className="h-4 w-4" />
             Nueva venta
