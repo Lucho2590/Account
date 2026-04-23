@@ -182,14 +182,20 @@ export default function ReportesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Reportes</h1>
-        <p className="text-muted-foreground">Genera reportes y estados de cuenta en PDF</p>
+        <h1 className="text-2xl font-bold sm:text-3xl">Reportes</h1>
+        <p className="text-sm text-muted-foreground sm:text-base">
+          Genera reportes y estados de cuenta en PDF
+        </p>
       </div>
 
       <Tabs defaultValue="individual">
-        <TabsList>
-          <TabsTrigger value="individual">Estado de Cuenta Individual</TabsTrigger>
-          <TabsTrigger value="listados">Listados Generales</TabsTrigger>
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="individual" className="flex-1 sm:flex-initial">
+            Individual
+          </TabsTrigger>
+          <TabsTrigger value="listados" className="flex-1 sm:flex-initial">
+            Listados
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="individual" className="space-y-4">

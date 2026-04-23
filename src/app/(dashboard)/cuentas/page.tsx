@@ -168,100 +168,165 @@ export default function CuentasPage() {
     };
   }, [cuentas, search, filtroSaldo]);
 
-  const renderTable = (items: CuentaConEntidad[], tipo: 'cliente' | 'proveedor') => (
-    <div className="overflow-hidden rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/40 hover:bg-muted/40">
-            <TableHead>{tipo === 'cliente' ? 'Cliente' : 'Proveedor'}</TableHead>
-            <TableHead>Último movimiento</TableHead>
-            <TableHead className="text-right">Saldo</TableHead>
-            <TableHead className="w-[1%]" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} className="py-12 text-center text-muted-foreground">
-                No hay cuentas que coincidan con los filtros.
-              </TableCell>
-            </TableRow>
-          ) : (
-            items.map((cuenta) => (
-              <TableRow key={cuenta.id} className="group">
-                <TableCell>
+  const renderTable = (items: CuentaConEntidad[], tipo: 'cliente' | 'proveedor') => {
+    if (items.length === 0) {
+      return (
+        <div className="rounded-md border py-12 text-center text-muted-foreground">
+          No hay cuentas que coincidan con los filtros.
+        </div>
+      );
+    }
+    return (
+      <>
+        <div className="hidden overflow-hidden rounded-md border md:block">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead>{tipo === 'cliente' ? 'Cliente' : 'Proveedor'}</TableHead>
+                <TableHead>Último movimiento</TableHead>
+                <TableHead className="text-right">Saldo</TableHead>
+                <TableHead className="w-[1%]" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((cuenta) => (
+                <TableRow key={cuenta.id} className="group">
+                  <TableCell>
+                    <Link
+                      href={`/${tipo === 'cliente' ? 'clientes' : 'proveedores'}/${cuenta.entidadId}`}
+                      className="flex flex-col"
+                    >
+                      <span className="font-medium text-foreground group-hover:underline">
+                        {cuenta.entidadNombre}
+                      </span>
+                      {!cuenta.activa && (
+                        <Badge variant="secondary" className="mt-1 w-fit text-[10px]">
+                          Cuenta inactiva
+                        </Badge>
+                      )}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    {cuenta.ultimoMovimiento ? (
+                      <div className="flex flex-col leading-tight">
+                        <span className="text-sm text-foreground">
+                          {formatDateShort(cuenta.ultimoMovimiento.fecha)}
+                        </span>
+                        <span className="text-xs text-muted-foreground truncate max-w-[220px]">
+                          {cuenta.ultimoMovimiento.descripcion}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Sin movimientos</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <BalanceDisplay
+                      saldo={cuenta.saldoActual}
+                      tipoEntidad={tipo}
+                      size="md"
+                      align="right"
+                    />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1 opacity-70 transition group-hover:opacity-100">
+                      <Button variant="ghost" size="icon" asChild title="Ver detalle">
+                        <Link
+                          href={`/${tipo === 'cliente' ? 'clientes' : 'proveedores'}/${cuenta.entidadId}`}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Descargar estado de cuenta"
+                        onClick={() => handleDownloadEstadoCuenta(cuenta)}
+                        disabled={downloadingId === cuenta.id}
+                      >
+                        {downloadingId === cuenta.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button variant="default" size="icon" asChild title="Nuevo movimiento">
+                        <Link href={`/cuentas/${cuenta.id}/movimiento`}>
+                          <Plus className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="flex flex-col gap-2 md:hidden">
+          {items.map((cuenta) => (
+            <div key={cuenta.id} className="rounded-md border bg-card p-3 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <Link
+                  href={`/${tipo === 'cliente' ? 'clientes' : 'proveedores'}/${cuenta.entidadId}`}
+                  className="min-w-0 flex-1"
+                >
+                  <p className="truncate text-sm font-semibold">{cuenta.entidadNombre}</p>
+                  {cuenta.ultimoMovimiento ? (
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {formatDateShort(cuenta.ultimoMovimiento.fecha)} ·{' '}
+                      {cuenta.ultimoMovimiento.descripcion}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">Sin movimientos</p>
+                  )}
+                  {!cuenta.activa && (
+                    <Badge variant="secondary" className="mt-1 text-[10px]">
+                      Cuenta inactiva
+                    </Badge>
+                  )}
+                </Link>
+                <BalanceDisplay
+                  saldo={cuenta.saldoActual}
+                  tipoEntidad={tipo}
+                  size="sm"
+                  align="right"
+                />
+              </div>
+              <div className="mt-2 flex justify-end gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Ver">
                   <Link
                     href={`/${tipo === 'cliente' ? 'clientes' : 'proveedores'}/${cuenta.entidadId}`}
-                    className="flex flex-col"
                   >
-                    <span className="font-medium text-foreground group-hover:underline">
-                      {cuenta.entidadNombre}
-                    </span>
-                    {!cuenta.activa && (
-                      <Badge variant="secondary" className="mt-1 w-fit text-[10px]">
-                        Cuenta inactiva
-                      </Badge>
-                    )}
+                    <Eye className="h-4 w-4" />
                   </Link>
-                </TableCell>
-                <TableCell>
-                  {cuenta.ultimoMovimiento ? (
-                    <div className="flex flex-col leading-tight">
-                      <span className="text-sm text-foreground">
-                        {formatDateShort(cuenta.ultimoMovimiento.fecha)}
-                      </span>
-                      <span className="text-xs text-muted-foreground truncate max-w-[220px]">
-                        {cuenta.ultimoMovimiento.descripcion}
-                      </span>
-                    </div>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  title="Descargar"
+                  onClick={() => handleDownloadEstadoCuenta(cuenta)}
+                  disabled={downloadingId === cuenta.id}
+                >
+                  {downloadingId === cuenta.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <span className="text-xs text-muted-foreground">Sin movimientos</span>
+                    <Download className="h-4 w-4" />
                   )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <BalanceDisplay
-                    saldo={cuenta.saldoActual}
-                    tipoEntidad={tipo}
-                    size="md"
-                    align="right"
-                  />
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1 opacity-70 transition group-hover:opacity-100">
-                    <Button variant="ghost" size="icon" asChild title="Ver detalle">
-                      <Link
-                        href={`/${tipo === 'cliente' ? 'clientes' : 'proveedores'}/${cuenta.entidadId}`}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Descargar estado de cuenta"
-                      onClick={() => handleDownloadEstadoCuenta(cuenta)}
-                      disabled={downloadingId === cuenta.id}
-                    >
-                      {downloadingId === cuenta.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Download className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button variant="default" size="icon" asChild title="Nuevo movimiento">
-                      <Link href={`/cuentas/${cuenta.id}/movimiento`}>
-                        <Plus className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
-  );
+                </Button>
+                <Button variant="default" size="icon" className="h-8 w-8" asChild title="Nuevo movimiento">
+                  <Link href={`/cuentas/${cuenta.id}/movimiento`}>
+                    <Plus className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  };
 
   if (loading) {
     return (
@@ -279,7 +344,9 @@ export default function CuentasPage() {
             <Wallet className="h-3.5 w-3.5" />
             Cuentas corrientes
           </div>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">Saldos y movimientos</h1>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+            Saldos y movimientos
+          </h1>
           <p className="text-sm text-muted-foreground">
             Controlá lo que te deben y lo que debés, en un solo lugar.
           </p>
@@ -350,12 +417,12 @@ export default function CuentasPage() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="proveedores">
-            <TabsList className="mb-4">
-              <TabsTrigger value="proveedores" className="gap-2">
+            <TabsList className="mb-4 w-full sm:w-auto">
+              <TabsTrigger value="proveedores" className="flex-1 gap-2 sm:flex-initial">
                 <Truck className="h-4 w-4" />
                 Proveedores ({cuentasProveedores.length})
               </TabsTrigger>
-              <TabsTrigger value="clientes" className="gap-2">
+              <TabsTrigger value="clientes" className="flex-1 gap-2 sm:flex-initial">
                 <Users className="h-4 w-4" />
                 Clientes ({cuentasClientes.length})
               </TabsTrigger>

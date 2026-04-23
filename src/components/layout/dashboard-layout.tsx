@@ -1,6 +1,8 @@
 'use client';
 
 import { Sidebar } from './sidebar';
+import { BottomNav } from './bottom-nav';
+import { MobileHeader } from './mobile-header';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
@@ -20,11 +22,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-muted/30">
+    <div className="flex min-h-screen flex-col bg-muted/30 md:h-screen md:flex-row md:overflow-hidden">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[1400px] p-4 md:p-6 lg:p-8">{children}</div>
+      <MobileHeader />
+      <main className="flex-1 md:overflow-y-auto">
+        <div className="mx-auto max-w-[1400px] px-4 pt-4 pb-28 md:p-6 md:pb-6 lg:p-8">
+          {children}
+        </div>
       </main>
+      <BottomNav />
     </div>
   );
 }

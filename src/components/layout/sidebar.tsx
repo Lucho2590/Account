@@ -5,59 +5,15 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
-  LayoutDashboard,
-  Users,
-  Truck,
-  Package,
-  Wallet,
-  FileText,
   LogOut,
   ChevronLeft,
   ChevronRight,
   Plus,
   ArrowLeftRight,
-  ShoppingCart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-
-type NavItem = {
-  title: string;
-  href: string;
-  icon: typeof LayoutDashboard;
-  exact?: boolean;
-};
-
-type NavSection = {
-  label: string;
-  items: NavItem[];
-};
-
-const sections: NavSection[] = [
-  {
-    label: 'General',
-    items: [
-      { title: 'Dashboard', href: '/', icon: LayoutDashboard, exact: true },
-      { title: 'Cuentas', href: '/cuentas', icon: Wallet },
-      { title: 'Reportes', href: '/reportes', icon: FileText },
-    ],
-  },
-  {
-    label: 'Operaciones',
-    items: [{ title: 'Ventas', href: '/ventas', icon: ShoppingCart }],
-  },
-  {
-    label: 'Entidades',
-    items: [
-      { title: 'Proveedores', href: '/proveedores', icon: Truck },
-      { title: 'Clientes', href: '/clientes', icon: Users },
-    ],
-  },
-  {
-    label: 'Catálogo',
-    items: [{ title: 'Productos', href: '/productos', icon: Package }],
-  },
-];
+import { navSections, type NavItem } from './nav-items';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -70,7 +26,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'flex flex-col border-r bg-sidebar text-sidebar-foreground transition-all duration-300',
+        'hidden md:flex flex-col border-r bg-sidebar text-sidebar-foreground transition-all duration-300',
         collapsed ? 'w-16' : 'w-60',
       )}
     >
@@ -111,7 +67,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 pb-2">
-        {sections.map((section) => (
+        {navSections.map((section) => (
           <div key={section.label} className="mb-4">
             {!collapsed && (
               <h3 className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
