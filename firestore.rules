@@ -1,0 +1,162 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ================================================================
+    // PERFIL DEL QUE LLAMA
+    // Todo sale de un único documento: usuarios/{request.auth.uid}.
+    // Firestore cachea los accesos al mismo documento dentro de una misma
+    // evaluación, así que llamar a estas funciones N veces cuesta una sola
+    // lectura facturada y un solo document access call. Por eso están
+    // escritas para leerse bien y no para ahorrar gets.
+    // ================================================================
+
+    function perfilPath() {
+      return /databases/$(database)/documents/usuarios/$(request.auth.uid);
+    }
+
+    function perfil() {
+      return get(perfilPath()).data;
+    }
+
+    // El exists() hace falta: get() de un documento inexistente devuelve null
+    // y acceder a .data sobre null aborta la evaluación entera.
+    function habilitado() {
+      return request.auth != null
+        && exists(perfilPath())
+        && perfil().activo == true;
+    }
+
+    function esSuper()   { return habilitado() && perfil().rol == 'super'; }
+    function esDueno()   { return habilitado() && perfil().rol == 'dueno'; }
+    function miEmpresa() { return perfil().empresaId; }
+
+    // Dueño o empleado de ESA empresa. El super no entra acá a propósito:
+    // supervisa (lee) pero no opera (no escribe datos de negocio).
+    function operaEn(eid) {
+      return habilitado()
+        && perfil().empresaId == eid
+        && (perfil().rol == 'dueno' || perfil().rol == 'empleado');
+    }
+
+    // Único otro documento que tocan las reglas, y solo en escritura:
+    // dejarlo fuera de las lecturas hace que desactivar una empresa la
+    // congele en solo-lectura en vez de cortarle el acceso, y mantiene las
+    // lecturas en una sola lectura facturada.
+    function empresaActiva(eid) {
+      return get(/databases/$(database)/documents/empresas/$(eid)).data.activa == true;
+    }
+
+    // Forma del perfil. Se aplica en create y en update: en un update,
+    // request.resource.data es el documento completo tal como quedaría.
+    function perfilBienFormado() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['email','nombre','activo','rol','empresaId','createdAt','updatedAt'])
+        && d.keys().hasAll(['email','nombre','activo','rol','empresaId'])
+        && d.rol in ['super','dueno','empleado']
+        && d.email is string
+        && d.nombre is string
+        && d.activo is bool
+        && (d.rol == 'super' ? d.empresaId == null : d.empresaId is string);
+    }
+
+    // ================================================================
+    // EMPRESAS
+    // ================================================================
+    match /empresas/{eid} {
+      allow get: if esSuper() || operaEn(eid);
+      // Listar empresas es solo del super. El dueño hace getDoc de la suya:
+      // un getDocs(collection('empresas')) le fallaría entero, porque las
+      // reglas no filtran.
+      allow list: if esSuper();
+      allow create, update, delete: if esSuper();
+    }
+
+    // ================================================================
+    // DATOS DE NEGOCIO
+    // clientes, proveedores, productos, cuentas_corrientes, movimientos,
+    // ventas, contadores, y cualquier colección que agreguemos mañana.
+    // El aislamiento lo da el PATH, no un campo: no hay nada que validar en
+    // el documento y nada que un bug de la app pueda saltear.
+    // ================================================================
+    match /empresas/{eid}/{documento=**} {
+      allow read:  if esSuper() || operaEn(eid);
+
+      // El superusuario también escribe: desde su panel puede entrar a
+      // cualquier empresa y operar como si fuera ella ("impersonar"). No se
+      // le exige que la empresa esté activa — desactivarla congela a sus
+      // usuarios, no al administrador de la plataforma.
+      //
+      // Contrapartida a tener presente: nada en los datos distingue después
+      // una carga del superusuario de una del cliente.
+      allow write: if esSuper() || (operaEn(eid) && empresaActiva(eid));
+    }
+
+    // ================================================================
+    // USUARIOS (top-level: las reglas necesitan resolver
+    // usuarios/$(request.auth.uid) sin conocer la empresa de antemano)
+    // ================================================================
+    match /usuarios/{uid} {
+
+      // El propio perfil, siempre, incluso inactivo: AuthContext lo lee antes
+      // de saber si el usuario está habilitado, y la app necesita el dato
+      // para explicarle por qué no lo deja entrar.
+      allow get: if request.auth != null && request.auth.uid == uid;
+
+      allow get: if esSuper() || (esDueno() && resource.data.empresaId == miEmpresa());
+
+      // Para el dueño, la query TIENE que traer where('empresaId','==',suEmpresa):
+      // si no, Firestore la rechaza entera. Para el super, esSuper() corta por
+      // izquierda sin tocar `resource`, así que lista sin filtro.
+      allow list: if esSuper() || (esDueno() && resource.data.empresaId == miEmpresa());
+
+      // ALTA. Acá NO existe `resource`: todo se valida contra
+      // request.resource.data.
+      //
+      // Nunca agregar `allow create: if request.auth.uid == uid`: la apiKey es
+      // pública y el alta por email/password está habilitada, así que
+      // cualquiera puede crearse una cuenta de Auth. Si además pudiera
+      // escribir su propio perfil, se auto-asignaría rol 'super'. Hoy no
+      // puede: sin perfil previo habilitado() es false y todo create muere.
+      allow create: if esSuper() && perfilBienFormado();
+
+      allow create: if esDueno()
+                    && perfilBienFormado()
+                    && request.resource.data.rol == 'empleado'
+                    && request.resource.data.empresaId == miEmpresa()
+                    && request.resource.data.activo == true;
+
+      // MODIFICACIÓN.
+      //   resource.data         = como está hoy   -> a quién puedo tocar
+      //   request.resource.data = como quedaría   -> qué me dejan escribir
+      // Confundirlos es el bug clásico: validar `resource.data.rol` sin
+      // validar `request.resource.data.rol` deja que alguien se escriba
+      // rol 'super' encima.
+      allow update: if esSuper() && perfilBienFormado();
+
+      // El dueño toca solo usuarios que HOY son empleados de SU empresa.
+      // No puede tocar a otros dueños ni a sí mismo por esta vía: evita que
+      // dos dueños se desactiven mutuamente o que uno se bloquee solo.
+      allow update: if esDueno()
+                    && resource.data.empresaId == miEmpresa()
+                    && resource.data.rol == 'empleado'
+                    && request.resource.data.rol == resource.data.rol
+                    && request.resource.data.empresaId == resource.data.empresaId
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['nombre','activo','updatedAt']);
+
+      // Cada uno puede cambiarse el nombre y nada más: ni rol, ni empresa,
+      // ni reactivarse solo.
+      allow update: if request.auth != null
+                    && request.auth.uid == uid
+                    && resource.data.activo == true
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['nombre','updatedAt']);
+
+      // La baja es lógica (activo:false), nunca borrado: el uid es la
+      // referencia de auditoría del resto de los datos.
+      allow delete: if false;
+    }
+  }
+}

@@ -5,8 +5,10 @@ import { Loader2 } from 'lucide-react';
 import { Cliente, Producto } from '@/types';
 import { getClientes, getProductos } from '@/lib/firebase-db';
 import { VentaForm } from '@/components/ventas/venta-form';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 export default function NuevaVentaPage() {
+  const empresaId = useEmpresaId();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -15,7 +17,7 @@ export default function NuevaVentaPage() {
     let cancelled = false;
     async function load() {
       try {
-        const [cls, prods] = await Promise.all([getClientes(), getProductos()]);
+        const [cls, prods] = await Promise.all([getClientes(empresaId), getProductos(empresaId)]);
         if (!cancelled) {
           setClientes(cls);
           setProductos(prods);
@@ -28,7 +30,7 @@ export default function NuevaVentaPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [empresaId]);
 
   if (loading) {
     return (

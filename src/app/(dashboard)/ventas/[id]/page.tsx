@@ -34,6 +34,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { useEmpresaId } from '@/contexts/AuthContext';
 import {
   Table,
   TableBody,
@@ -44,6 +45,7 @@ import {
 } from '@/components/ui/table';
 
 export default function VentaDetallePage() {
+  const empresaId = useEmpresaId();
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -58,13 +60,13 @@ export default function VentaDetallePage() {
     let cancelled = false;
     async function load() {
       try {
-        const v = await getVenta(id);
+        const v = await getVenta(empresaId, id);
         if (!v) {
           toast.error('Venta no encontrada');
           router.push('/ventas');
           return;
         }
-        const c = await getCliente(v.clienteId);
+        const c = await getCliente(empresaId, v.clienteId);
         if (!cancelled) {
           setVenta(v);
           setCliente(c);
@@ -77,15 +79,15 @@ export default function VentaDetallePage() {
     return () => {
       cancelled = true;
     };
-  }, [id, router]);
+  }, [id, router, empresaId]);
 
   async function handleAnular() {
     if (!venta) return;
     setAnulando(true);
     try {
-      await anularVenta(venta.id);
+      await anularVenta(empresaId, venta.id);
       toast.success(`Venta #${venta.numero} anulada`);
-      const updated = await getVenta(venta.id);
+      const updated = await getVenta(empresaId, venta.id);
       setVenta(updated);
       setConfirmOpen(false);
     } catch (err) {

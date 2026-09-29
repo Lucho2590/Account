@@ -16,8 +16,10 @@ import {
   Wallet,
   XCircle,
 } from 'lucide-react';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 export default function VentasPage() {
+  const empresaId = useEmpresaId();
   const [ventas, setVentas] = useState<Venta[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,7 +27,7 @@ export default function VentasPage() {
     let cancelled = false;
     async function load() {
       try {
-        const data = await getVentas();
+        const data = await getVentas(empresaId);
         if (!cancelled) setVentas(data);
       } finally {
         if (!cancelled) setLoading(false);
@@ -35,7 +37,7 @@ export default function VentasPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [empresaId]);
 
   const kpis = useMemo(() => {
     const now = new Date();

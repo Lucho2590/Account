@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,9 +14,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Building2, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Si la sesión de Firebase sigue viva pero la cookie venció, el proxy nos
+  // manda acá. Para entonces el AuthContext ya reescribió la cookie, así que
+  // podemos volver al dashboard sin rebotar de nuevo.
+  useEffect(() => {
+    if (user) {
+      router.replace('/');
+    }
+  }, [user, router]);
 
   const {
     register,
@@ -29,13 +40,15 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
 
-    const success = await login(data.email, data.password);
-
-    if (!success) {
-      setError('Credenciales incorrectas');
+    try {
+      await login(data.email, data.password);
+      router.replace('/');
+      // No apagamos isLoading: el componente se está yendo y apagarlo acá
+      // hace parpadear el botón mientras navega.
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo iniciar sesión');
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (

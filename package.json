@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "seed": "tsx scripts/seed-data.ts"
+    "lint": "eslint"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
@@ -17,6 +16,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "firebase": "^12.12.1",
+    "jose": "^6.2.12",
     "js-cookie": "^3.0.5",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",

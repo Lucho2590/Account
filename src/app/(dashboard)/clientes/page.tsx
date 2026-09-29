@@ -1,23 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Cliente } from '@/types';
 import { getClientes, deleteCliente } from '@/lib/firebase-db';
 import { ClientesTable } from '@/components/clientes/clientes-table';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 export default function ClientesPage() {
+  const empresaId = useEmpresaId();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadClientes();
-  }, []);
-
-  async function loadClientes() {
+  const loadClientes = useCallback(async () => {
     try {
-      const data = await getClientes();
+      const data = await getClientes(empresaId);
       setClientes(data);
     } catch (error) {
       console.error('Error loading clientes:', error);
@@ -25,11 +23,15 @@ export default function ClientesPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [empresaId]);
+
+  useEffect(() => {
+    loadClientes();
+  }, [loadClientes]);
 
   async function handleDelete(id: string) {
     try {
-      await deleteCliente(id);
+      await deleteCliente(empresaId, id);
       setClientes(clientes.filter((c) => c.id !== id));
       toast.success('Cliente eliminado correctamente');
     } catch (error) {

@@ -10,8 +10,10 @@ import { addProducto, getProveedores } from '@/lib/firebase-db';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 export default function NuevoProductoPage() {
+  const empresaId = useEmpresaId();
   const router = useRouter();
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,7 +22,7 @@ export default function NuevoProductoPage() {
   useEffect(() => {
     async function loadProveedores() {
       try {
-        const data = await getProveedores();
+        const data = await getProveedores(empresaId);
         setProveedores(data);
       } catch (error) {
         console.error('Error loading proveedores:', error);
@@ -30,12 +32,12 @@ export default function NuevoProductoPage() {
     }
 
     loadProveedores();
-  }, []);
+  }, [empresaId]);
 
   async function handleSubmit(data: ProductoSchemaType) {
     setIsSubmitting(true);
     try {
-      await addProducto(data);
+      await addProducto(empresaId, data);
       toast.success('Producto creado correctamente');
       router.push('/productos');
     } catch (error) {

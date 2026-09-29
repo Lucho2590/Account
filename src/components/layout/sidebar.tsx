@@ -13,11 +13,12 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { navSections, type NavItem } from './nav-items';
+import { getNavSections, type NavItem } from './nav-items';
 
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const secciones = getNavSections(user?.rol ?? 'empleado');
   const [collapsed, setCollapsed] = useState(false);
 
   const isActive = (item: NavItem) =>
@@ -58,7 +59,7 @@ export function Sidebar() {
       </div>
 
       <div className="p-3">
-        <Button asChild className="w-full gap-2" size={collapsed ? 'icon' : 'default'}>
+                <Button asChild className="w-full gap-2" size={collapsed ? 'icon' : 'default'}>
           <Link href="/cuentas" title={collapsed ? 'Nuevo movimiento' : undefined}>
             <Plus className="h-4 w-4" />
             {!collapsed && <span>Nuevo movimiento</span>}
@@ -67,7 +68,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 pb-2">
-        {navSections.map((section) => (
+        {secciones.map((section) => (
           <div key={section.label} className="mb-4">
             {!collapsed && (
               <h3 className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

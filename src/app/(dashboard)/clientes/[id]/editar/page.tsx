@@ -10,8 +10,10 @@ import { ClienteSchemaType } from '@/lib/validators';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 export default function EditarClientePage() {
+  const empresaId = useEmpresaId();
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -23,7 +25,7 @@ export default function EditarClientePage() {
   useEffect(() => {
     async function loadCliente() {
       try {
-        const data = await getCliente(id);
+        const data = await getCliente(empresaId, id);
         if (!data) {
           toast.error('Cliente no encontrado');
           router.push('/clientes');
@@ -39,12 +41,12 @@ export default function EditarClientePage() {
     }
 
     loadCliente();
-  }, [id, router]);
+  }, [id, router, empresaId]);
 
   async function handleSubmit(data: ClienteSchemaType) {
     setIsSubmitting(true);
     try {
-      await updateCliente(id, data);
+      await updateCliente(empresaId, id, data);
       toast.success('Cliente actualizado correctamente');
       router.push(`/clientes/${id}`);
     } catch (error) {

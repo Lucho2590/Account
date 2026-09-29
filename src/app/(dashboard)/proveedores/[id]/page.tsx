@@ -32,8 +32,10 @@ import {
   Copy,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 export default function ProveedorDetailPage() {
+  const empresaId = useEmpresaId();
   const params = useParams();
   const id = params.id as string;
 
@@ -45,17 +47,17 @@ export default function ProveedorDetailPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const proveedorData = await getProveedor(id);
+        const proveedorData = await getProveedor(empresaId, id);
         if (!proveedorData) {
           toast.error('Proveedor no encontrado');
           return;
         }
         setProveedor(proveedorData);
 
-        const cuentaData = await getCuentaByEntidad(id, 'proveedor');
+        const cuentaData = await getCuentaByEntidad(empresaId, id, 'proveedor');
         if (cuentaData) {
           setCuenta(cuentaData);
-          const movimientosData = await getMovimientosByCuenta(cuentaData.id);
+          const movimientosData = await getMovimientosByCuenta(empresaId, cuentaData.id);
           setMovimientos(movimientosData);
         }
       } catch (error) {
@@ -67,7 +69,7 @@ export default function ProveedorDetailPage() {
     }
 
     loadData();
-  }, [id]);
+  }, [id, empresaId]);
 
   function copiar(value: string, label: string) {
     navigator.clipboard.writeText(value).then(() => toast.success(`${label} copiado`));
