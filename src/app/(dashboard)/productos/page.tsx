@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Producto, Proveedor } from '@/types';
 import { getProductos, getProveedores, deleteProducto } from '@/lib/firebase-db';
@@ -28,8 +28,10 @@ import {
 } from '@/components/ui/dialog';
 import { Pencil, Trash2, Search, Plus, AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 export default function ProductosPage() {
+  const empresaId = useEmpresaId();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,15 +42,11 @@ export default function ProductosPage() {
   });
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       const [productosData, proveedoresData] = await Promise.all([
-        getProductos(),
-        getProveedores(),
+        getProductos(empresaId),
+        getProveedores(empresaId),
       ]);
       setProductos(productosData);
       setProveedores(proveedoresData);
@@ -58,14 +56,18 @@ export default function ProductosPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [empresaId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleDelete = async () => {
     if (!deleteDialog.producto) return;
 
     setIsDeleting(true);
     try {
-      await deleteProducto(deleteDialog.producto.id);
+      await deleteProducto(empresaId, deleteDialog.producto.id);
       setProductos(productos.filter((p) => p.id !== deleteDialog.producto!.id));
       toast.success('Producto eliminado correctamente');
       setDeleteDialog({ open: false, producto: null });

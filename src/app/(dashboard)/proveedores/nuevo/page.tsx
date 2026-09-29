@@ -9,15 +9,17 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 export default function NuevoProveedorPage() {
+  const empresaId = useEmpresaId();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(data: ProveedorSchemaType) {
     setIsLoading(true);
     try {
-      await addProveedor(data);
+      await addProveedor(empresaId, data);
       toast.success('Proveedor creado correctamente');
       router.push('/proveedores');
     } catch (error) {

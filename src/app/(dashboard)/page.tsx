@@ -42,12 +42,14 @@ import type {
   TipoEntidad,
 } from '@/types';
 import { cn } from '@/lib/utils';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 interface CuentaConEntidad extends CuentaCorriente {
   entidadNombre: string;
 }
 
 export default function DashboardPage() {
+  const empresaId = useEmpresaId();
   const [resumen, setResumen] = useState<ResumenCuentas | null>(null);
   const [alertas, setAlertas] = useState<AlertaStock[]>([]);
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
@@ -59,12 +61,12 @@ export default function DashboardPage() {
       try {
         const [resumenData, alertasData, movimientosData, cuentasData, clientes, proveedores] =
           await Promise.all([
-            getResumenCuentas(),
-            getAlertasStock(),
-            getUltimosMovimientos(8),
-            getCuentasCorrientes(),
-            getClientes(),
-            getProveedores(),
+            getResumenCuentas(empresaId),
+            getAlertasStock(empresaId),
+            getUltimosMovimientos(empresaId, 8),
+            getCuentasCorrientes(empresaId),
+            getClientes(empresaId),
+            getProveedores(empresaId),
           ]);
 
         setResumen(resumenData);
@@ -91,7 +93,7 @@ export default function DashboardPage() {
     }
 
     loadData();
-  }, []);
+  }, [empresaId]);
 
   const cuentaPorId = useMemo(() => {
     const map = new Map<string, CuentaConEntidad>();

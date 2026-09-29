@@ -9,15 +9,17 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 export default function NuevoClientePage() {
+  const empresaId = useEmpresaId();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(data: ClienteSchemaType) {
     setIsLoading(true);
     try {
-      await addCliente(data);
+      await addCliente(empresaId, data);
       toast.success('Cliente creado correctamente');
       router.push('/clientes');
     } catch (error) {

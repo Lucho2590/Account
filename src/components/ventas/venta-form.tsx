@@ -33,6 +33,7 @@ import { ClientePicker } from './cliente-picker';
 import { ProductoPicker } from './producto-picker';
 import { ItemsTable } from './items-table';
 import { MediosPagoSelector } from './medios-pago-selector';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 interface VentaFormProps {
   clientes: Cliente[];
@@ -40,6 +41,7 @@ interface VentaFormProps {
 }
 
 export function VentaForm({ clientes, productos }: VentaFormProps) {
+  const empresaId = useEmpresaId();
   const router = useRouter();
 
   const [clienteId, setClienteId] = useState<string | null>(null);
@@ -61,14 +63,14 @@ export function VentaForm({ clientes, productos }: VentaFormProps) {
         setCuenta(null);
         return;
       }
-      const c = await getCuentaByEntidad(clienteId, 'cliente');
+      const c = await getCuentaByEntidad(empresaId, clienteId, 'cliente');
       if (!cancelled) setCuenta(c);
     }
     load();
     return () => {
       cancelled = true;
     };
-  }, [clienteId]);
+  }, [clienteId, empresaId]);
 
   const total = useMemo(
     () => items.reduce((sum, it) => sum + it.subtotal, 0),
@@ -158,7 +160,7 @@ export function VentaForm({ clientes, productos }: VentaFormProps) {
 
     setSubmitting(true);
     try {
-      const venta = await createVenta(
+      const venta = await createVenta(empresaId, 
         {
           clienteId: cliente.id,
           fecha,

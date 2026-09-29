@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Cliente, CuentaCorriente, Movimiento, Proveedor } from '@/types';
 import {
@@ -46,6 +46,7 @@ import {
   Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 interface CuentaConEntidad extends CuentaCorriente {
   entidadNombre: string;
@@ -55,6 +56,7 @@ interface CuentaConEntidad extends CuentaCorriente {
 type FiltroSaldo = 'todos' | 'con_saldo' | 'al_dia' | 'a_favor';
 
 export default function CuentasPage() {
+  const empresaId = useEmpresaId();
   const [cuentas, setCuentas] = useState<CuentaConEntidad[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
@@ -63,17 +65,13 @@ export default function CuentasPage() {
   const [filtroSaldo, setFiltroSaldo] = useState<FiltroSaldo>('todos');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       const [cuentasData, clientes, proveedores, ultimosMovs] = await Promise.all([
-        getCuentasCorrientes(),
-        getClientes(),
-        getProveedores(),
-        getUltimosMovimientos(200),
+        getCuentasCorrientes(empresaId),
+        getClientes(empresaId),
+        getProveedores(empresaId),
+        getUltimosMovimientos(empresaId, 200),
       ]);
 
       const ultimoPorCuenta = new Map<string, Movimiento>();
@@ -108,7 +106,11 @@ export default function CuentasPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [empresaId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   async function handleDownloadEstadoCuenta(cuenta: CuentaConEntidad) {
     setDownloadingId(cuenta.id);
@@ -123,7 +125,7 @@ export default function CuentasPage() {
         return;
       }
 
-      const movimientos = await getMovimientosByCuenta(cuenta.id);
+      const movimientos = await getMovimientosByCuenta(empresaId, cuenta.id);
       generateEstadoCuentaPDF({
         entidad,
         cuenta,

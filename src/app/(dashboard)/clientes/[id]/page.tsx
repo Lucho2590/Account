@@ -32,8 +32,10 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 export default function ClienteDetailPage() {
+  const empresaId = useEmpresaId();
   const params = useParams();
   const id = params.id as string;
 
@@ -45,17 +47,17 @@ export default function ClienteDetailPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const clienteData = await getCliente(id);
+        const clienteData = await getCliente(empresaId, id);
         if (!clienteData) {
           toast.error('Cliente no encontrado');
           return;
         }
         setCliente(clienteData);
 
-        const cuentaData = await getCuentaByEntidad(id, 'cliente');
+        const cuentaData = await getCuentaByEntidad(empresaId, id, 'cliente');
         if (cuentaData) {
           setCuenta(cuentaData);
-          const movimientosData = await getMovimientosByCuenta(cuentaData.id);
+          const movimientosData = await getMovimientosByCuenta(empresaId, cuentaData.id);
           setMovimientos(movimientosData);
         }
       } catch (error) {
@@ -67,7 +69,7 @@ export default function ClienteDetailPage() {
     }
 
     loadData();
-  }, [id]);
+  }, [id, empresaId]);
 
   if (loading) {
     return (

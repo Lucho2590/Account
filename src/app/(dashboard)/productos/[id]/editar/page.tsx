@@ -10,8 +10,10 @@ import { ProductoSchemaType } from '@/lib/validators';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 export default function EditarProductoPage() {
+  const empresaId = useEmpresaId();
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -25,8 +27,8 @@ export default function EditarProductoPage() {
     async function loadData() {
       try {
         const [productoData, proveedoresData] = await Promise.all([
-          getProducto(id),
-          getProveedores(),
+          getProducto(empresaId, id),
+          getProveedores(empresaId),
         ]);
 
         if (!productoData) {
@@ -46,12 +48,12 @@ export default function EditarProductoPage() {
     }
 
     loadData();
-  }, [id, router]);
+  }, [id, router, empresaId]);
 
   async function handleSubmit(data: ProductoSchemaType) {
     setIsSubmitting(true);
     try {
-      await updateProducto(id, data);
+      await updateProducto(empresaId, id, data);
       toast.success('Producto actualizado correctamente');
       router.push('/productos');
     } catch (error) {

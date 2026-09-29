@@ -1,23 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Proveedor } from '@/types';
 import { getProveedores, deleteProveedor } from '@/lib/firebase-db';
 import { ProveedoresTable } from '@/components/proveedores/proveedores-table';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 export default function ProveedoresPage() {
+  const empresaId = useEmpresaId();
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadProveedores();
-  }, []);
-
-  async function loadProveedores() {
+  const loadProveedores = useCallback(async () => {
     try {
-      const data = await getProveedores();
+      const data = await getProveedores(empresaId);
       setProveedores(data);
     } catch (error) {
       console.error('Error loading proveedores:', error);
@@ -25,11 +23,15 @@ export default function ProveedoresPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [empresaId]);
+
+  useEffect(() => {
+    loadProveedores();
+  }, [loadProveedores]);
 
   async function handleDelete(id: string) {
     try {
-      await deleteProveedor(id);
+      await deleteProveedor(empresaId, id);
       setProveedores(proveedores.filter((p) => p.id !== id));
       toast.success('Proveedor eliminado correctamente');
     } catch (error) {

@@ -6,7 +6,8 @@ import { useState } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { bottomNavItems, moreMenuItems, type NavItem } from './nav-items';
+import { getBottomNavItems, getMoreMenuItems, type NavItem } from './nav-items';
+import { useAuth } from '@/contexts/AuthContext';
 
 function isActive(pathname: string, item: NavItem) {
   return item.exact ? pathname === item.href : pathname.startsWith(item.href);
@@ -16,14 +17,18 @@ export function BottomNav() {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const moreActive = moreMenuItems.some((item) => isActive(pathname, item));
+  const { user } = useAuth();
+  const rol = user?.rol ?? 'empleado';
+  const itemsInferiores = getBottomNavItems(rol);
+  const itemsMas = getMoreMenuItems(rol);
+  const moreActive = itemsMas.some((item) => isActive(pathname, item));
 
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t bg-background/95 backdrop-blur-sm md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {bottomNavItems.map((item) => {
+      {itemsInferiores.map((item) => {
         const active = isActive(pathname, item);
         const Icon = item.icon;
         return (
@@ -41,6 +46,9 @@ export function BottomNav() {
         );
       })}
 
+      {/* Sin items no tiene sentido el botón: el superusuario que no está
+          dentro de una empresa abriría una hoja vacía. */}
+      {itemsMas.length > 0 && (
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetTrigger
           render={
@@ -62,7 +70,7 @@ export function BottomNav() {
             <SheetTitle>Más opciones</SheetTitle>
           </SheetHeader>
           <ul className="flex flex-col gap-1 p-2">
-            {moreMenuItems.map((item) => {
+            {itemsMas.map((item) => {
               const active = isActive(pathname, item);
               const Icon = item.icon;
               return (
@@ -86,6 +94,7 @@ export function BottomNav() {
           </ul>
         </SheetContent>
       </Sheet>
+      )}
     </nav>
   );
 }

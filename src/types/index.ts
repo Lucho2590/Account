@@ -113,23 +113,6 @@ export interface Movimiento {
 
 export type MovimientoFormData = Omit<Movimiento, 'id' | 'saldoAnterior' | 'saldoPosterior' | 'createdAt'>;
 
-// Tipos para Contactos (Agenda)
-export interface Contacto {
-  id: string;
-  nombre: string;
-  empresa: string;
-  cargo: string;
-  telefono: string;
-  email: string;
-  notas: string;
-  entidadId?: string;
-  tipoEntidad?: TipoEntidad;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type ContactoFormData = Omit<Contacto, 'id' | 'createdAt' | 'updatedAt'>;
-
 // Tipos para Ventas
 export type MedioPago = 'efectivo' | 'transferencia' | 'tarjeta' | 'cheque' | 'cuenta_corriente';
 export type EstadoVenta = 'completada' | 'anulada';
@@ -191,3 +174,42 @@ export interface AlertaStock {
   stockActual: number;
   stockMinimo: number;
 }
+
+// Tipos para Empresas (tenants)
+export interface Empresa {
+  id: string;
+  nombre: string;
+  cuit: string;
+  activa: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type EmpresaFormData = {
+  nombre: string;
+  cuit: string;
+};
+
+// Tipos para Usuarios
+// `super` es global y no pertenece a ninguna empresa; `dueño` gestiona la
+// gente de la suya; `empleado` solo opera.
+export type RolUsuario = 'super' | 'dueno' | 'empleado';
+
+export interface Usuario {
+  uid: string;
+  email: string;
+  nombre: string;
+  activo: boolean;
+  rol: RolUsuario;
+  empresaId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type UsuarioFormData = {
+  email: string;
+  nombre: string;
+  password: string;
+  rol: Exclude<RolUsuario, 'super'>;
+  empresaId: string;
+};

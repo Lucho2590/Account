@@ -10,8 +10,10 @@ import { ProveedorSchemaType } from '@/lib/validators';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 export default function EditarProveedorPage() {
+  const empresaId = useEmpresaId();
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -23,7 +25,7 @@ export default function EditarProveedorPage() {
   useEffect(() => {
     async function loadProveedor() {
       try {
-        const data = await getProveedor(id);
+        const data = await getProveedor(empresaId, id);
         if (!data) {
           toast.error('Proveedor no encontrado');
           router.push('/proveedores');
@@ -39,12 +41,12 @@ export default function EditarProveedorPage() {
     }
 
     loadProveedor();
-  }, [id, router]);
+  }, [id, router, empresaId]);
 
   async function handleSubmit(data: ProveedorSchemaType) {
     setIsSubmitting(true);
     try {
-      await updateProveedor(id, data);
+      await updateProveedor(empresaId, id, data);
       toast.success('Proveedor actualizado correctamente');
       router.push(`/proveedores/${id}`);
     } catch (error) {

@@ -35,6 +35,7 @@ import {
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useEmpresaId } from '@/contexts/AuthContext';
 
 interface CuentaConEntidad extends CuentaCorriente {
   entidadNombre: string;
@@ -151,6 +152,7 @@ function computeSaldoPosterior(
 }
 
 export default function NuevoMovimientoPage() {
+  const empresaId = useEmpresaId();
   const params = useParams();
   const router = useRouter();
   const cuentaId = params.id as string;
@@ -187,9 +189,9 @@ export default function NuevoMovimientoPage() {
     async function loadData() {
       try {
         const [cuentas, clientes, proveedores] = await Promise.all([
-          getCuentasCorrientes(),
-          getClientes(),
-          getProveedores(),
+          getCuentasCorrientes(empresaId),
+          getClientes(empresaId),
+          getProveedores(empresaId),
         ]);
 
         const cuentaData = cuentas.find((c) => c.id === cuentaId);
@@ -222,7 +224,7 @@ export default function NuevoMovimientoPage() {
     }
 
     loadData();
-  }, [cuentaId, router, setValue]);
+  }, [cuentaId, router, setValue, empresaId]);
 
   const operaciones = useMemo(
     () => (cuenta ? getOperaciones(cuenta.tipoEntidad) : []),
@@ -234,7 +236,7 @@ export default function NuevoMovimientoPage() {
   async function onSubmit(data: MovimientoSchemaType) {
     setIsSubmitting(true);
     try {
-      await addMovimiento(data);
+      await addMovimiento(empresaId, data);
       toast.success('Movimiento registrado');
       if (cuenta?.tipoEntidad === 'cliente') {
         router.push(`/clientes/${cuenta.entidadId}`);

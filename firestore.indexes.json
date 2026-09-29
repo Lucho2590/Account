@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "movimientos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cuentaId", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "usuarios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "empresaId", "order": "ASCENDING" },
+        { "fieldPath": "nombre", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

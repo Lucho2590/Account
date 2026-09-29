@@ -125,3 +125,23 @@ export const loginSchema = z.object({
 });
 
 export type LoginSchemaType = z.infer<typeof loginSchema>;
+
+// Schema para Usuarios
+export const usuarioSchema = z.object({
+  nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+  // 'super' no se puede elegir desde la app: las Firestore Rules lo rechazan
+  // y el único superusuario se crea a mano.
+  rol: z.enum(['dueno', 'empleado']),
+});
+
+// Schema para Empresas
+export const empresaSchema = z.object({
+  nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  cuit: z.string().min(8, 'El CUIT debe tener al menos 8 caracteres'),
+});
+
+export type EmpresaSchemaType = z.infer<typeof empresaSchema>;
+
+export type UsuarioSchemaType = z.infer<typeof usuarioSchema>;
