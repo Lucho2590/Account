@@ -17,22 +17,24 @@ import {
   MedioPago,
   Producto,
   VentaItem,
+  Presentacion,
 } from '@/types';
 import {
   createVenta,
   getCuentaByEntidad,
 } from '@/lib/firebase-db';
 import { formatCurrency } from '@/lib/formatters';
+import { armarItem, recalcularItem } from '@/lib/presentaciones';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { BalanceDisplay } from '@/components/cuentas/balance-display';
-import { ClientePicker } from './cliente-picker';
-import { ProductoPicker } from './producto-picker';
-import { ItemsTable } from './items-table';
-import { MediosPagoSelector } from './medios-pago-selector';
+import { EntidadPicker } from '@/components/shared/entidad-picker';
+import { ProductoPicker, claveItem } from '@/components/shared/producto-picker';
+import { ItemsTable } from '@/components/shared/items-table';
+import { MediosPagoSelector } from '@/components/shared/medios-pago-selector';
 import { useEmpresaId } from '@/contexts/AuthContext';
 
 interface VentaFormProps {
@@ -100,30 +102,32 @@ export function VentaForm({ clientes, productos }: VentaFormProps) {
     return null;
   }, [cliente, cuenta, total, medioPago]);
 
-  function addItem(producto: Producto) {
+  function addItem(producto: Producto, presentacion: Presentacion | null) {
     setItems((prev) => {
-      const idx = prev.findIndex((it) => it.productoId === producto.id);
+      // El mismo producto en dos presentaciones son dos líneas distintas:
+      // tienen precio y cantidad propios.
+      const idx = prev.findIndex(
+        (it) => it.productoId === producto.id && (it.presentacion ?? null) === (presentacion?.nombre ?? null),
+      );
       if (idx >= 0) {
         const next = [...prev];
-        const cantidad = next[idx].cantidad + 1;
+        const actual = next[idx];
         next[idx] = {
-          ...next[idx],
-          cantidad,
-          subtotal: cantidad * next[idx].precioUnitario,
+          ...actual,
+          ...recalcularItem(actual, {
+            cantidadPresentacion: (actual.cantidadPresentacion ?? actual.cantidad) + 1,
+          }),
         };
         return next;
       }
       return [
         ...prev,
-        {
-          productoId: producto.id,
-          productoCodigo: producto.codigo,
-          productoNombre: producto.nombre,
-          unidad: producto.unidad,
-          cantidad: 1,
-          precioUnitario: producto.precioVenta,
-          subtotal: producto.precioVenta,
-        },
+        armarItem({
+          producto,
+          presentacion,
+          cantidadPresentacion: 1,
+          precioPresentacion: producto.precioVenta * (presentacion?.factor ?? 1),
+        }),
       ];
     });
   }
@@ -211,8 +215,8 @@ export function VentaForm({ clientes, productos }: VentaFormProps) {
             <CardContent className="grid gap-4 sm:grid-cols-[1fr_180px]">
               <div className="space-y-2">
                 <Label>Cliente *</Label>
-                <ClientePicker
-                  clientes={clientes}
+                <EntidadPicker
+              entidades={clientes}
                   value={clienteId}
                   onChange={setClienteId}
                 />
@@ -256,7 +260,7 @@ export function VentaForm({ clientes, productos }: VentaFormProps) {
               <ProductoPicker
                 productos={productos}
                 onSelect={addItem}
-                excludeIds={items.map((it) => it.productoId)}
+                excludeKeys={items.map((it) => claveItem(it.productoId, it.presentacion ?? null))}
               />
               <ItemsTable
                 items={items}

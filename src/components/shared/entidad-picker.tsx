@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Check, ChevronsUpDown, Search, User } from 'lucide-react';
-import { Cliente } from '@/types';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -15,21 +15,42 @@ import {
 import { formatCUIT } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
-interface ClientePickerProps {
-  clientes: Cliente[];
-  value: string | null;
-  onChange: (clienteId: string) => void;
+/**
+ * Lo mínimo que el picker necesita. Cliente y Proveedor lo cumplen por igual,
+ * así que la misma pantalla sirve para los dos lados del negocio.
+ */
+export interface EntidadSeleccionable {
+  id: string;
+  razonSocial: string;
+  cuit: string;
+  activo: boolean;
 }
 
-export function ClientePicker({ clientes, value, onChange }: ClientePickerProps) {
+interface EntidadPickerProps {
+  entidades: EntidadSeleccionable[];
+  value: string | null;
+  onChange: (entidadId: string) => void;
+  placeholder?: string;
+  tituloDialog?: string;
+  icon?: typeof User;
+}
+
+export function EntidadPicker({
+  entidades,
+  value,
+  onChange,
+  placeholder = 'Seleccioná un cliente…',
+  tituloDialog = 'Seleccionar cliente',
+  icon: Icon = User,
+}: EntidadPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  const selected = clientes.find((c) => c.id === value);
+  const selected = entidades.find((c) => c.id === value);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return clientes
+    return entidades
       .filter((c) => c.activo)
       .filter((c) => {
         if (!q) return true;
@@ -38,7 +59,7 @@ export function ClientePicker({ clientes, value, onChange }: ClientePickerProps)
           c.cuit.toLowerCase().includes(q)
         );
       });
-  }, [clientes, search]);
+  }, [entidades, search]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -53,17 +74,17 @@ export function ClientePicker({ clientes, value, onChange }: ClientePickerProps)
       >
         {selected ? (
           <span className="flex items-center gap-2 truncate">
-            <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="truncate">{selected.razonSocial}</span>
           </span>
         ) : (
-          <span className="text-muted-foreground">Seleccioná un cliente…</span>
+          <span className="text-muted-foreground">{placeholder}</span>
         )}
         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </DialogTrigger>
       <DialogContent className="max-w-lg p-0">
         <DialogHeader className="px-4 pt-4">
-          <DialogTitle>Seleccionar cliente</DialogTitle>
+          <DialogTitle>{tituloDialog}</DialogTitle>
         </DialogHeader>
         <div className="px-4">
           <div className="relative">
@@ -80,7 +101,7 @@ export function ClientePicker({ clientes, value, onChange }: ClientePickerProps)
         <div className="max-h-[50vh] overflow-y-auto px-2 pb-4">
           {filtered.length === 0 ? (
             <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
-              No hay clientes que coincidan
+              No hay entidades que coincidan
             </div>
           ) : (
             <ul className="space-y-0.5">
@@ -101,7 +122,7 @@ export function ClientePicker({ clientes, value, onChange }: ClientePickerProps)
                       )}
                     >
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
-                        <User className="h-4 w-4 text-muted-foreground" />
+                        <Icon className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{c.razonSocial}</p>

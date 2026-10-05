@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Producto, Proveedor } from '@/types';
-import { getProducto, getProveedores, updateProducto } from '@/lib/firebase-db';
+import { Producto } from '@/types';
+import { getProducto, updateProducto } from '@/lib/firebase-db';
 import { ProductoForm } from '@/components/productos/producto-form';
 import { ProductoSchemaType } from '@/lib/validators';
 import { Button } from '@/components/ui/button';
@@ -19,17 +19,13 @@ export default function EditarProductoPage() {
   const id = params.id as string;
 
   const [producto, setProducto] = useState<Producto | null>(null);
-  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [productoData, proveedoresData] = await Promise.all([
-          getProducto(empresaId, id),
-          getProveedores(empresaId),
-        ]);
+        const productoData = await getProducto(empresaId, id);
 
         if (!productoData) {
           toast.error('Producto no encontrado');
@@ -38,7 +34,6 @@ export default function EditarProductoPage() {
         }
 
         setProducto(productoData);
-        setProveedores(proveedoresData);
       } catch (error) {
         console.error('Error loading data:', error);
         toast.error('Error al cargar los datos');
@@ -97,17 +92,18 @@ export default function EditarProductoPage() {
           descripcion: producto.descripcion,
           tipo: producto.tipo,
           unidad: producto.unidad,
+          presentaciones: producto.presentaciones,
           stockActual: producto.stockActual,
           stockMinimo: producto.stockMinimo,
           precioCompra: producto.precioCompra,
           precioVenta: producto.precioVenta,
-          proveedorId: producto.proveedorId,
           activo: producto.activo,
         }}
-        proveedores={proveedores}
         onSubmit={handleSubmit}
         isLoading={isSubmitting}
-        submitLabel="Guardar Cambios"
+        permitirStockInicial={false}
+        submitLabel="Guardar cambios"
+        onCancel={() => router.push(`/productos/${id}`)}
       />
     </div>
   );

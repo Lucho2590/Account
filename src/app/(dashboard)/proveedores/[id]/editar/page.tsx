@@ -97,7 +97,7 @@ export default function EditarProveedorPage() {
         }}
         onSubmit={handleSubmit}
         isLoading={isSubmitting}
-        submitLabel="Guardar Cambios"
+        submitLabel="Guardar cambios"
       />
     </div>
   );

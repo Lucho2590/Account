@@ -1,3 +1,5 @@
+import type { TipoEntidad, TipoMovimiento } from '@/types';
+
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -110,9 +112,86 @@ export function formatMedioPago(medio: string): string {
   return map[medio] || medio;
 }
 
-// Formatear estado de venta
-export function formatEstadoVenta(estado: string): string {
+// Formatear estado de un comprobante (venta, compra, recepción)
+export function formatEstadoComprobante(estado: string): string {
   return estado === 'anulada' ? 'Anulada' : 'Completada';
+}
+
+/** @deprecated Usar formatEstadoComprobante: el estado no es propio de ventas. */
+export const formatEstadoVenta = formatEstadoComprobante;
+
+// Efecto de un movimiento sobre el saldo, según de quién sea la cuenta.
+//
+// Es la misma regla de signo que aplica `addMovimiento` al calcular el saldo,
+// y la única pieza de la que dependen todas las etiquetas y colores de la UI:
+//   cliente   → `debe` aumenta lo que nos deben
+//   proveedor → `haber` aumenta lo que le debemos
+export type EfectoSaldo = 'aumenta' | 'disminuye';
+
+export function getEfectoMovimiento(
+  tipoEntidad: TipoEntidad,
+  tipo: TipoMovimiento,
+): EfectoSaldo {
+  if (tipoEntidad === 'cliente') {
+    return tipo === 'debe' ? 'aumenta' : 'disminuye';
+  }
+  return tipo === 'haber' ? 'aumenta' : 'disminuye';
+}
+
+/** Cómo se llama cada lado del libro mayor según la entidad. */
+export function etiquetasMovimiento(tipoEntidad: TipoEntidad) {
+  return tipoEntidad === 'cliente'
+    ? { aumenta: 'Le facturamos', disminuye: 'Cobramos' }
+    : { aumenta: 'Nos facturaron', disminuye: 'Pagamos' };
+}
+
+/** El saldo que queda tras aplicar un movimiento. */
+export function aplicarMovimiento(
+  saldoAnterior: number,
+  tipoEntidad: TipoEntidad,
+  tipo: TipoMovimiento,
+  monto: number,
+): number {
+  return getEfectoMovimiento(tipoEntidad, tipo) === 'aumenta'
+    ? saldoAnterior + monto
+    : saldoAnterior - monto;
+}
+
+// Formatear estado de una orden de compra
+export function formatEstadoOrden(estado: string): string {
+  const map: Record<string, string> = {
+    pendiente: 'Pendiente',
+    parcial: 'Recibida en parte',
+    recibida: 'Recibida',
+    anulada: 'Anulada',
+  };
+  return map[estado] || estado;
+}
+
+// De dónde vino un movimiento de stock
+export function formatOrigenStock(origen: string): string {
+  const map: Record<string, string> = {
+    recepcion: 'Recepción',
+    anulacion_recepcion: 'Anulación de recepción',
+    venta: 'Venta',
+    anulacion_venta: 'Anulación de venta',
+    carga_inicial: 'Carga inicial',
+    ajuste: 'Ajuste',
+  };
+  return map[origen] || origen;
+}
+
+export function formatMotivoAjuste(motivo?: string): string {
+  if (!motivo) return '';
+  const map: Record<string, string> = {
+    recuento: 'Diferencia de recuento',
+    rotura: 'Rotura',
+    vencido: 'Vencido',
+    robo: 'Faltante / robo',
+    devolucion: 'Devolución',
+    otro: 'Otro',
+  };
+  return map[motivo] || motivo;
 }
 
 // Formatear concepto de movimiento

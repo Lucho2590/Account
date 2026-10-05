@@ -6,7 +6,9 @@ import {
   Wallet,
   FileText,
   ShoppingCart,
+  PackagePlus,
   UserCog,
+  Boxes,
 } from 'lucide-react';
 import type { RolUsuario } from '@/types';
 
@@ -50,7 +52,10 @@ const navOperativa: NavSection[] = [
   },
   {
     label: 'Operaciones',
-    items: [{ title: 'Ventas', href: '/ventas', icon: ShoppingCart }],
+    items: [
+      { title: 'Ventas', href: '/ventas', icon: ShoppingCart },
+      { title: 'Compras', href: '/compras', icon: PackagePlus },
+    ],
   },
   {
     label: 'Entidades',
@@ -61,7 +66,10 @@ const navOperativa: NavSection[] = [
   },
   {
     label: 'Catálogo',
-    items: [{ title: 'Productos', href: '/productos', icon: Package }],
+    items: [
+      { title: 'Productos', href: '/productos', icon: Package },
+      { title: 'Inventario', href: '/inventario', icon: Boxes },
+    ],
   },
   {
     label: 'Administración',
@@ -93,6 +101,8 @@ const bottomOperativa: NavItem[] = [
 ];
 
 const moreOperativa: NavItem[] = [
+  { title: 'Compras', href: '/compras', icon: PackagePlus },
+  { title: 'Inventario', href: '/inventario', icon: Boxes },
   { title: 'Proveedores', href: '/proveedores', icon: Truck },
   { title: 'Productos', href: '/productos', icon: Package },
   { title: 'Reportes', href: '/reportes', icon: FileText },

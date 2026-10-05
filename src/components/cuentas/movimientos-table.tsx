@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { ArrowDownCircle, ArrowUpCircle, Search, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatConcepto, formatCurrency, formatDateShort } from '@/lib/formatters';
+import { etiquetasMovimiento, formatConcepto, formatCurrency, formatDateShort, getEfectoMovimiento } from '@/lib/formatters';
 import type { ConceptoMovimiento, Movimiento, TipoEntidad } from '@/types';
 
 type ConceptoFilter = ConceptoMovimiento | 'todos';
@@ -61,15 +61,8 @@ export function MovimientosTable({
     );
   }, [filtrados]);
 
-  const aumentaLabel = tipoEntidad === 'cliente' ? 'Le facturamos' : 'Nos facturaron';
-  const disminuyeLabel = tipoEntidad === 'cliente' ? 'Cobramos' : 'Pagamos';
-
-  const getEffect = (mov: Movimiento): 'aumenta' | 'disminuye' => {
-    if (tipoEntidad === 'cliente') {
-      return mov.tipo === 'debe' ? 'aumenta' : 'disminuye';
-    }
-    return mov.tipo === 'haber' ? 'aumenta' : 'disminuye';
-  };
+  const { aumenta: aumentaLabel, disminuye: disminuyeLabel } = etiquetasMovimiento(tipoEntidad);
+  const getEffect = (mov: Movimiento) => getEfectoMovimiento(tipoEntidad, mov.tipo);
 
   return (
     <div className="space-y-4">
@@ -84,7 +77,19 @@ export function MovimientosTable({
               className="pl-9 sm:w-64"
             />
           </div>
-          <Select value={concepto} onValueChange={(v) => setConcepto(v as ConceptoFilter)}>
+          <Select
+            value={concepto}
+            onValueChange={(v) => setConcepto(v as ConceptoFilter)}
+            items={{
+              todos: 'Todos los conceptos',
+              ...(tipoEntidad === 'proveedor'
+                ? { compra: 'Compras', pago: 'Pagos' }
+                : { venta: 'Ventas', cobro: 'Cobros' }),
+              nota_credito: 'N. crédito',
+              nota_debito: 'N. débito',
+              ajuste: 'Ajustes',
+            }}
+          >
             <SelectTrigger className="sm:w-44">
               <SelectValue />
             </SelectTrigger>

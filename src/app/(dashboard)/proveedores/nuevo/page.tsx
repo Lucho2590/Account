@@ -44,7 +44,7 @@ export default function NuevoProveedorPage() {
         </div>
       </div>
 
-      <ProveedorForm onSubmit={handleSubmit} isLoading={isLoading} submitLabel="Crear Proveedor" />
+      <ProveedorForm onSubmit={handleSubmit} isLoading={isLoading} submitLabel="Crear proveedor" />
     </div>
   );
 }

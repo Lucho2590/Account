@@ -6,8 +6,8 @@ import { Venta } from '@/types';
 import { getVentas } from '@/lib/firebase-db';
 import { formatCurrency } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { VentasTable } from '@/components/ventas/ventas-table';
+import { KpiCard } from '@/components/shared/kpi-card';
 import {
   Loader2,
   Plus,
@@ -98,71 +98,31 @@ export default function VentasPage() {
         <KpiCard
           label="Ventas del mes"
           value={String(kpis.ventasMes)}
-          icon={<ShoppingCart className="h-5 w-5" />}
+          icon={ShoppingCart}
           tone="neutral"
         />
         <KpiCard
           label="Facturación del mes"
           value={formatCurrency(kpis.facturacionMes)}
-          icon={<TrendingUp className="h-5 w-5" />}
+          icon={TrendingUp}
           tone="positive"
         />
         <KpiCard
           label="Pendiente de cobro"
           value={formatCurrency(kpis.pendienteCobro)}
-          icon={<Wallet className="h-5 w-5" />}
+          icon={Wallet}
           tone="warning"
           sub="Ventas en cuenta corriente"
         />
         <KpiCard
           label="Anuladas"
           value={String(kpis.anuladas)}
-          icon={<XCircle className="h-5 w-5" />}
+          icon={XCircle}
           tone="negative"
         />
       </div>
 
       <VentasTable ventas={ventas} />
     </div>
-  );
-}
-
-function KpiCard({
-  label,
-  value,
-  icon,
-  tone,
-  sub,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  tone: 'positive' | 'negative' | 'neutral' | 'warning';
-  sub?: string;
-}) {
-  const toneStyle =
-    tone === 'positive'
-      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-      : tone === 'negative'
-        ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
-        : tone === 'warning'
-          ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
-          : 'bg-muted text-foreground';
-
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-4 py-5">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-full ${toneStyle}`}>
-          {icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            {label}
-          </p>
-          <p className="truncate text-xl font-bold tabular-nums">{value}</p>
-          {sub && <p className="truncate text-xs text-muted-foreground">{sub}</p>}
-        </div>
-      </CardContent>
-    </Card>
   );
 }

@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Producto, Proveedor } from '@/types';
-import { getProductos, getProveedores, deleteProducto } from '@/lib/firebase-db';
+import { Producto, Proveedor, ItemCatalogo } from '@/types';
+import { formatCantidad } from '@/lib/presentaciones';
+import { getProductos, getProveedores, getCatalogoCompleto, deleteProducto } from '@/lib/firebase-db';
 import { formatCurrency } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +35,7 @@ export default function ProductosPage() {
   const empresaId = useEmpresaId();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [catalogo, setCatalogo] = useState<ItemCatalogo[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; producto: Producto | null }>({
@@ -44,12 +46,14 @@ export default function ProductosPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [productosData, proveedoresData] = await Promise.all([
+      const [productosData, proveedoresData, catalogoData] = await Promise.all([
         getProductos(empresaId),
         getProveedores(empresaId),
+        getCatalogoCompleto(empresaId),
       ]);
       setProductos(productosData);
       setProveedores(proveedoresData);
+      setCatalogo(catalogoData);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Error al cargar los datos');
@@ -79,10 +83,14 @@ export default function ProductosPage() {
     }
   };
 
-  const getProveedorNombre = (proveedorId?: string) => {
-    if (!proveedorId) return '-';
-    const proveedor = proveedores.find((p) => p.id === proveedorId);
-    return proveedor?.razonSocial || '-';
+  // Un producto puede venderlo más de un proveedor, así que el dato ya no
+  // sale de la ficha sino del catálogo.
+  const proveedoresDe = (productoId: string) => {
+    const nombres = catalogo
+      .filter((c) => c.productoId === productoId && c.activo)
+      .map((c) => proveedores.find((p) => p.id === c.proveedorId)?.razonSocial)
+      .filter((x): x is string => Boolean(x));
+    return [...new Set(nombres)];
   };
 
   const filteredProductos = productos.filter(
@@ -122,8 +130,16 @@ export default function ProductosPage() {
               {items.map((producto) => (
                 <TableRow key={producto.id}>
                   <TableCell className="font-mono">{producto.codigo}</TableCell>
-                  <TableCell className="font-medium">{producto.nombre}</TableCell>
-                  <TableCell>{getProveedorNombre(producto.proveedorId)}</TableCell>
+                  <TableCell className="font-medium">
+                    <Link href={`/productos/${producto.id}`} className="hover:underline">
+                      {producto.nombre}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    {proveedoresDe(producto.id).join(', ') || (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       {producto.stockActual <= producto.stockMinimo && (
@@ -136,7 +152,7 @@ export default function ProductosPage() {
                             : ''
                         }
                       >
-                        {producto.stockActual} {producto.unidad}
+                        {formatCantidad(producto.stockActual, producto.unidad)}
                       </span>
                     </div>
                   </TableCell>
@@ -193,7 +209,7 @@ export default function ProductosPage() {
                     </div>
                     <p className="mt-0.5 truncate text-sm font-semibold">{producto.nombre}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {getProveedorNombre(producto.proveedorId)}
+                      {proveedoresDe(producto.id).join(', ') || '-'}
                     </p>
                   </div>
                   <div className="flex items-center gap-1">
@@ -225,7 +241,7 @@ export default function ProductosPage() {
                     }
                   >
                     {stockBajo && <AlertTriangle className="h-3.5 w-3.5" />}
-                    Stock: {producto.stockActual} {producto.unidad}
+                    Stock: {formatCantidad(producto.stockActual, producto.unidad)}
                   </span>
                   <span className="tabular-nums text-muted-foreground">
                     Compra {formatCurrency(producto.precioCompra)}

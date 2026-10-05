@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 import { VentaItem, Producto } from '@/types';
 import { Input } from '@/components/ui/input';
@@ -13,16 +14,90 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/formatters';
+import {
+  abrevUnidad,
+  equivalenciaDeItem,
+  formatCantidad,
+  recalcularItem,
+} from '@/lib/presentaciones';
 
 interface ItemsTableProps {
   items: VentaItem[];
   productos: Producto[];
   onUpdate: (index: number, patch: Partial<VentaItem>) => void;
   onRemove: (index: number) => void;
+  /**
+   * Avisar cuando la cantidad supera el stock. Solo aplica a salidas: una
+   * compra ingresa mercadería, así que no hay techo contra el cual avisar.
+   */
+  validarStock?: boolean;
+  /** Encabezado de la columna de precio. */
+  labelPrecio?: string;
 }
 
-export function ItemsTable({ items, productos, onUpdate, onRemove }: ItemsTableProps) {
+export function ItemsTable({
+  items,
+  productos,
+  onUpdate,
+  onRemove,
+  validarStock = true,
+  labelPrecio = 'Precio unit.',
+}: ItemsTableProps) {
   const productoById = new Map(productos.map((p) => [p.id, p]));
+
+  // Mientras se tipea manda el texto crudo, no el número. Sin esto el campo no
+  // se podía vaciar — `Number('') || 0` lo devolvía a 0 en cada tecla — y al
+  // escribir sobre un 0 quedaban cosas como "02".
+  const [borrador, setBorrador] = useState<{
+    idx: number;
+    campo: 'cantidad' | 'precio';
+    texto: string;
+  } | null>(null);
+
+  const textoDe = (idx: number, campo: 'cantidad' | 'precio', valor: number) =>
+    borrador && borrador.idx === idx && borrador.campo === campo
+      ? borrador.texto
+      : String(valor);
+
+  /** Campo numérico que recuerda lo tipeado hasta que se va el foco. */
+  function campoNumerico(
+    idx: number,
+    campo: 'cantidad' | 'precio',
+    item: VentaItem,
+    valor: number,
+  ) {
+    return {
+      type: 'number' as const,
+      min: 0,
+      step: '0.01',
+      inputMode: 'decimal' as const,
+      value: textoDe(idx, campo, valor),
+      onFocus: () => setBorrador({ idx, campo, texto: String(valor) }),
+      onBlur: () => setBorrador(null),
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+        const texto = e.target.value;
+        setBorrador({ idx, campo, texto });
+        const n = texto === '' ? 0 : Number(texto);
+        if (Number.isNaN(n)) return;
+        onUpdate(
+          idx,
+          recalcularItem(
+            item,
+            campo === 'cantidad'
+              ? { cantidadPresentacion: n }
+              : { precioPresentacion: n },
+          ),
+        );
+      },
+    };
+  }
+
+  // Con presentación, lo que se edita en pantalla son cajas y el precio por
+  // caja; `cantidad` y `precioUnitario` del item siguen en unidad base.
+  const cantidadVisible = (it: VentaItem) => it.cantidadPresentacion ?? it.cantidad;
+  const precioVisible = (it: VentaItem) => it.precioPresentacion ?? it.precioUnitario;
+  const sufijo = (it: VentaItem) =>
+    it.presentacion ? it.presentacion.toLowerCase() : abrevUnidad(it.unidad);
 
   if (items.length === 0) {
     return (
@@ -40,7 +115,7 @@ export function ItemsTable({ items, productos, onUpdate, onRemove }: ItemsTableP
             <TableRow>
               <TableHead>Producto</TableHead>
               <TableHead className="w-32">Cantidad</TableHead>
-              <TableHead className="w-36">Precio unit.</TableHead>
+              <TableHead className="w-36">{labelPrecio}</TableHead>
               <TableHead className="w-32 text-right">Subtotal</TableHead>
               <TableHead className="w-10" />
             </TableRow>
@@ -49,7 +124,7 @@ export function ItemsTable({ items, productos, onUpdate, onRemove }: ItemsTableP
             {items.map((item, idx) => {
               const prod = productoById.get(item.productoId);
               const stock = prod?.stockActual ?? 0;
-              const excedeStock = prod ? item.cantidad > stock : false;
+              const excedeStock = validarStock && prod ? item.cantidad > stock : false;
 
               return (
                 <TableRow key={`${item.productoId}-${idx}`}>
@@ -57,8 +132,13 @@ export function ItemsTable({ items, productos, onUpdate, onRemove }: ItemsTableP
                     <div className="flex flex-col">
                       <span className="font-medium">{item.productoNombre}</span>
                       <span className="text-xs text-muted-foreground">
-                        #{item.productoCodigo} · Stock: {stock} {item.unidad}
+                        #{item.productoCodigo} · Stock: {formatCantidad(stock, item.unidad)}
                       </span>
+                      {equivalenciaDeItem(item) && (
+                        <span className="text-xs text-muted-foreground">
+                          {equivalenciaDeItem(item)}
+                        </span>
+                      )}
                       {excedeStock && (
                         <span className="mt-1 inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
                           <AlertTriangle className="h-3 w-3" />
@@ -68,34 +148,19 @@ export function ItemsTable({ items, productos, onUpdate, onRemove }: ItemsTableP
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={item.cantidad}
-                      onChange={(e) => {
-                        const cantidad = Number(e.target.value) || 0;
-                        onUpdate(idx, {
-                          cantidad,
-                          subtotal: cantidad * item.precioUnitario,
-                        });
-                      }}
-                      className="h-9"
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        {...campoNumerico(idx, 'cantidad', item, cantidadVisible(item))}
+                        className="h-9"
+                      />
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {sufijo(item)}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={item.precioUnitario}
-                      onChange={(e) => {
-                        const precioUnitario = Number(e.target.value) || 0;
-                        onUpdate(idx, {
-                          precioUnitario,
-                          subtotal: item.cantidad * precioUnitario,
-                        });
-                      }}
+                      {...campoNumerico(idx, 'precio', item, precioVisible(item))}
                       className="h-9"
                     />
                   </TableCell>
@@ -125,7 +190,7 @@ export function ItemsTable({ items, productos, onUpdate, onRemove }: ItemsTableP
         {items.map((item, idx) => {
           const prod = productoById.get(item.productoId);
           const stock = prod?.stockActual ?? 0;
-          const excedeStock = prod ? item.cantidad > stock : false;
+          const excedeStock = validarStock && prod ? item.cantidad > stock : false;
 
           return (
             <div
@@ -136,8 +201,13 @@ export function ItemsTable({ items, productos, onUpdate, onRemove }: ItemsTableP
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{item.productoNombre}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    #{item.productoCodigo} · Stock: {stock} {item.unidad}
+                    #{item.productoCodigo} · Stock: {formatCantidad(stock, item.unidad)}
                   </p>
+                  {equivalenciaDeItem(item) && (
+                    <p className="text-[11px] text-muted-foreground">
+                      {equivalenciaDeItem(item)}
+                    </p>
+                  )}
                 </div>
                 <Button
                   type="button"
@@ -152,38 +222,18 @@ export function ItemsTable({ items, productos, onUpdate, onRemove }: ItemsTableP
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[11px] text-muted-foreground">Cantidad</label>
+                  <label className="text-[11px] text-muted-foreground">
+                    Cantidad ({sufijo(item)})
+                  </label>
                   <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    inputMode="decimal"
-                    value={item.cantidad}
-                    onChange={(e) => {
-                      const cantidad = Number(e.target.value) || 0;
-                      onUpdate(idx, {
-                        cantidad,
-                        subtotal: cantidad * item.precioUnitario,
-                      });
-                    }}
+                    {...campoNumerico(idx, 'cantidad', item, cantidadVisible(item))}
                     className="h-9"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] text-muted-foreground">Precio unit.</label>
+                  <label className="text-[11px] text-muted-foreground">{labelPrecio}</label>
                   <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    inputMode="decimal"
-                    value={item.precioUnitario}
-                    onChange={(e) => {
-                      const precioUnitario = Number(e.target.value) || 0;
-                      onUpdate(idx, {
-                        precioUnitario,
-                        subtotal: item.cantidad * precioUnitario,
-                      });
-                    }}
+                    {...campoNumerico(idx, 'precio', item, precioVisible(item))}
                     className="h-9"
                   />
                 </div>

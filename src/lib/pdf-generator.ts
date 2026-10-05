@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Cliente, Proveedor, Movimiento, CuentaCorriente, Venta } from '@/types';
+import type { Cliente, CuentaCorriente, Movimiento, OrdenCompra, Proveedor, Recepcion, Venta } from '@/types';
 import {
   formatCurrency,
   formatDateShort,
@@ -394,4 +394,227 @@ export function generateComprobanteVentaPDF(data: ComprobanteVentaData): void {
 
   const fileName = `venta_${venta.numero}_${cliente.razonSocial.replace(/\s+/g, '_')}.pdf`;
   doc.save(fileName);
+}
+
+/**
+ * La orden de compra, pensada para mandarle al proveedor: qué le pedimos, a
+ * qué precio y a dónde entregarlo.
+ */
+export function generateOrdenCompraPDF(data: { orden: OrdenCompra; proveedor: Proveedor }): void {
+  const { orden, proveedor } = data;
+  const doc = new jsPDF();
+
+  const anulada = orden.estado === 'anulada';
+  // Violeta para compras: que no se confunda de un vistazo con una venta.
+  const primaryColor: [number, number, number] = anulada ? [150, 150, 150] : [109, 76, 185];
+  const textColor: [number, number, number] = [44, 62, 80];
+
+  doc.setFillColor(...primaryColor);
+  doc.rect(0, 0, 210, 40, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Account Control', 14, 20);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Orden de Compra #${orden.numero}`, 14, 30);
+
+  doc.setFontSize(10);
+  doc.text(`Fecha: ${formatDateShort(orden.fecha)}`, 140, 20);
+  doc.text(`Emitida: ${formatDateShort(new Date())}`, 140, 27);
+
+  if (anulada) {
+    doc.setFontSize(60);
+    doc.setTextColor(231, 76, 60);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ANULADA', 105, 160, { align: 'center', angle: 30 });
+  }
+
+  doc.setTextColor(...textColor);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('PROVEEDOR', 14, 55);
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text(proveedor.razonSocial, 14, 65);
+  doc.text(`CUIT: ${formatCUIT(proveedor.cuit)}`, 14, 72);
+  doc.text(`Condición IVA: ${formatCondicionIva(proveedor.condicionIva)}`, 14, 79);
+  doc.text(`Dirección: ${proveedor.direccion.calle}, ${proveedor.direccion.ciudad}`, 14, 86);
+
+  doc.setFillColor(245, 247, 250);
+  doc.rect(120, 50, 76, 45, 'F');
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Estado:', 125, 62);
+  doc.setFont('helvetica', 'normal');
+  doc.text(orden.estado, 125, 69);
+  if (orden.fechaEntregaEstimada) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Entrega estimada:', 125, 78);
+    doc.setFont('helvetica', 'normal');
+    doc.text(formatDateShort(orden.fechaEntregaEstimada), 125, 85);
+  }
+
+  doc.setTextColor(...textColor);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Detalle', 14, 110);
+
+  autoTable(doc, {
+    startY: 115,
+    head: [['Código', 'Producto', 'Cantidad', 'Costo unit.', 'Subtotal']],
+    body: orden.items.map((it) => [
+      it.productoCodigo,
+      it.productoNombre,
+      `${it.cantidad} ${it.unidad}`,
+      formatCurrency(it.costoUnitario),
+      formatCurrency(it.subtotal),
+    ]),
+    theme: 'striped',
+    headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold' },
+    columnStyles: {
+      0: { cellWidth: 25 },
+      1: { cellWidth: 75 },
+      2: { cellWidth: 30, halign: 'right' },
+      3: { cellWidth: 30, halign: 'right' },
+      4: { cellWidth: 30, halign: 'right' },
+    },
+    styles: { fontSize: 9, cellPadding: 3 },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    foot: [['', '', '', 'TOTAL', formatCurrency(orden.total)]],
+    footStyles: { fillColor: [230, 230, 230], textColor, fontStyle: 'bold' },
+  });
+
+  if (orden.observaciones) {
+    const finalY =
+      (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY || 180;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Observaciones:', 14, finalY + 10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(doc.splitTextToSize(orden.observaciones, 180), 14, finalY + 17);
+  }
+
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text(
+      `Página ${i} de ${pageCount} - Generado por Account Control`,
+      105,
+      doc.internal.pageSize.height - 10,
+      { align: 'center' },
+    );
+  }
+
+  doc.save(`orden_compra_${orden.numero}_${proveedor.razonSocial.replace(/\s+/g, '_')}.pdf`);
+}
+
+/** Comprobante de la mercadería efectivamente recibida. */
+export function generateComprobanteRecepcionPDF(data: {
+  recepcion: Recepcion;
+  proveedor: Proveedor;
+}): void {
+  const { recepcion, proveedor } = data;
+  const doc = new jsPDF();
+
+  const anulada = recepcion.estado === 'anulada';
+  const primaryColor: [number, number, number] = anulada ? [150, 150, 150] : [109, 76, 185];
+  const textColor: [number, number, number] = [44, 62, 80];
+
+  doc.setFillColor(...primaryColor);
+  doc.rect(0, 0, 210, 40, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Account Control', 14, 20);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Recepción #${recepcion.numero} — Orden #${recepcion.ordenCompraNumero}`, 14, 30);
+
+  doc.setFontSize(10);
+  doc.text(`Fecha: ${formatDateShort(recepcion.fecha)}`, 140, 20);
+  doc.text(`Emitida: ${formatDateShort(new Date())}`, 140, 27);
+
+  if (anulada) {
+    doc.setFontSize(60);
+    doc.setTextColor(231, 76, 60);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ANULADA', 105, 160, { align: 'center', angle: 30 });
+  }
+
+  doc.setTextColor(...textColor);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('PROVEEDOR', 14, 55);
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text(proveedor.razonSocial, 14, 65);
+  doc.text(`CUIT: ${formatCUIT(proveedor.cuit)}`, 14, 72);
+  doc.text(`Condición IVA: ${formatCondicionIva(proveedor.condicionIva)}`, 14, 79);
+
+  doc.setFillColor(245, 247, 250);
+  doc.rect(120, 50, 76, 45, 'F');
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Medio de pago:', 125, 62);
+  doc.setFont('helvetica', 'normal');
+  doc.text(formatMedioPago(recepcion.medioPago), 125, 69);
+  const comp = [recepcion.comprobanteTipo, recepcion.comprobanteNumero].filter(Boolean).join(' ');
+  if (comp) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Comprobante:', 125, 78);
+    doc.setFont('helvetica', 'normal');
+    doc.text(comp, 125, 85);
+  }
+
+  doc.setTextColor(...textColor);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Mercadería recibida', 14, 110);
+
+  autoTable(doc, {
+    startY: 115,
+    head: [['Código', 'Producto', 'Cantidad', 'Costo unit.', 'Subtotal']],
+    body: recepcion.items.map((it) => [
+      it.productoCodigo,
+      it.productoNombre,
+      `${it.cantidad} ${it.unidad}`,
+      formatCurrency(it.costoUnitario),
+      formatCurrency(it.subtotal),
+    ]),
+    theme: 'striped',
+    headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold' },
+    columnStyles: {
+      0: { cellWidth: 25 },
+      1: { cellWidth: 75 },
+      2: { cellWidth: 30, halign: 'right' },
+      3: { cellWidth: 30, halign: 'right' },
+      4: { cellWidth: 30, halign: 'right' },
+    },
+    styles: { fontSize: 9, cellPadding: 3 },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    foot: [['', '', '', 'TOTAL', formatCurrency(recepcion.total)]],
+    footStyles: { fillColor: [230, 230, 230], textColor, fontStyle: 'bold' },
+  });
+
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text(
+      `Página ${i} de ${pageCount} - Generado por Account Control`,
+      105,
+      doc.internal.pageSize.height - 10,
+      { align: 'center' },
+    );
+  }
+
+  doc.save(`recepcion_${recepcion.numero}_${proveedor.razonSocial.replace(/\s+/g, '_')}.pdf`);
 }
