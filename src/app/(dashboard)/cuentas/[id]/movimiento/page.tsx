@@ -13,7 +13,7 @@ import {
   addMovimiento,
 } from '@/lib/firebase-db';
 import { movimientoSchema, MovimientoSchemaType } from '@/lib/validators';
-import { formatCurrency } from '@/lib/formatters';
+import { aplicarMovimiento, formatCurrency } from '@/lib/formatters';
 import { BalanceDisplay } from '@/components/cuentas/balance-display';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -139,18 +139,6 @@ function getOperaciones(tipoEntidad: TipoEntidad): Operacion[] {
   ];
 }
 
-function computeSaldoPosterior(
-  saldoAnterior: number,
-  tipoEntidad: TipoEntidad,
-  tipo: 'debe' | 'haber',
-  monto: number,
-): number {
-  if (tipoEntidad === 'cliente') {
-    return tipo === 'debe' ? saldoAnterior + monto : saldoAnterior - monto;
-  }
-  return tipo === 'haber' ? saldoAnterior + monto : saldoAnterior - monto;
-}
-
 export default function NuevoMovimientoPage() {
   const empresaId = useEmpresaId();
   const params = useParams();
@@ -266,7 +254,7 @@ export default function NuevoMovimientoPage() {
 
   if (!cuenta) return null;
 
-  const saldoPosterior = computeSaldoPosterior(
+  const saldoPosterior = aplicarMovimiento(
     cuenta.saldoActual,
     cuenta.tipoEntidad,
     tipo,

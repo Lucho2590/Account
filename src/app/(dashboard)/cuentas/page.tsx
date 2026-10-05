@@ -404,7 +404,16 @@ export default function CuentasPage() {
                 className="pl-9 sm:w-72"
               />
             </div>
-            <Select value={filtroSaldo} onValueChange={(v) => setFiltroSaldo(v as FiltroSaldo)}>
+            <Select
+              value={filtroSaldo}
+              onValueChange={(v) => setFiltroSaldo(v as FiltroSaldo)}
+              items={{
+                todos: 'Todos los saldos',
+                con_saldo: 'Con saldo pendiente',
+                al_dia: 'Al día',
+                a_favor: 'Con saldo a favor',
+              }}
+            >
               <SelectTrigger className="sm:w-48">
                 <SelectValue />
               </SelectTrigger>

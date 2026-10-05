@@ -24,7 +24,7 @@ import {
   ArrowRight,
   Wallet,
 } from 'lucide-react';
-import { formatCurrency, formatDateShort, formatConcepto } from '@/lib/formatters';
+import { formatConcepto, formatCurrency, formatDateShort, getEfectoMovimiento } from '@/lib/formatters';
 import { BalanceDisplay } from '@/components/cuentas/balance-display';
 import {
   getResumenCuentas,
@@ -234,9 +234,7 @@ export default function DashboardPage() {
                       {movimientos.map((mov) => {
                         const cuenta = cuentaPorId.get(mov.cuentaId);
                         const tipoEntidad: TipoEntidad = cuenta?.tipoEntidad || 'cliente';
-                        const effect = tipoEntidad === 'cliente'
-                          ? mov.tipo === 'debe' ? 'aumenta' : 'disminuye'
-                          : mov.tipo === 'haber' ? 'aumenta' : 'disminuye';
+                        const effect = getEfectoMovimiento(tipoEntidad, mov.tipo);
                         return (
                           <TableRow key={mov.id}>
                             <TableCell className="text-sm text-muted-foreground">
@@ -285,9 +283,7 @@ export default function DashboardPage() {
                   {movimientos.map((mov) => {
                     const cuenta = cuentaPorId.get(mov.cuentaId);
                     const tipoEntidad: TipoEntidad = cuenta?.tipoEntidad || 'cliente';
-                    const effect = tipoEntidad === 'cliente'
-                      ? mov.tipo === 'debe' ? 'aumenta' : 'disminuye'
-                      : mov.tipo === 'haber' ? 'aumenta' : 'disminuye';
+                    const effect = getEfectoMovimiento(tipoEntidad, mov.tipo);
                     return (
                       <li
                         key={mov.id}

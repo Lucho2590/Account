@@ -58,8 +58,11 @@ export function ClienteForm({
 
   const condicionIva = watch('condicionIva');
 
+  // `noValidate` deja que valide zod y no el navegador: con type="email"
+  // Chrome frenaba el submit con su propio cartel en inglés y nuestros
+  // mensajes nunca llegaban a mostrarse.
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Información General</CardTitle>

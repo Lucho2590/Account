@@ -62,15 +62,22 @@ export function ProveedorForm({
 
   const condicionIva = watch('condicionIva');
 
+  // `noValidate` deja que valide zod y no el navegador: con type="email"
+  // Chrome frenaba el submit con su propio cartel en inglés y nuestros
+  // mensajes nunca llegaban a mostrarse.
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Información General</CardTitle>
+          <CardTitle className="text-base">Datos del proveedor</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Con la razón social alcanza para empezar a operar. Lo demás lo
+            completás cuando aparezca.
+          </p>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="razonSocial">Razón Social *</Label>
+            <Label htmlFor="razonSocial">Razón social *</Label>
             <Input
               id="razonSocial"
               {...register('razonSocial')}
@@ -82,7 +89,7 @@ export function ProveedorForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="cuit">CUIT *</Label>
+            <Label htmlFor="cuit">CUIT</Label>
             <Input
               id="cuit"
               placeholder="XX-XXXXXXXX-X"
@@ -95,19 +102,24 @@ export function ProveedorForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="condicionIva">Condición IVA *</Label>
+            <Label htmlFor="condicionIva">Condición de IVA</Label>
             <Select
               value={condicionIva}
               onValueChange={(value) =>
                 setValue('condicionIva', value as ProveedorSchemaType['condicionIva'])
               }
               disabled={isLoading}
+              items={{
+                responsable_inscripto: 'Responsable inscripto',
+                monotributo: 'Monotributo',
+                exento: 'Exento',
+              }}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar condición" />
+              <SelectTrigger className="w-full">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="responsable_inscripto">Responsable Inscripto</SelectItem>
+                <SelectItem value="responsable_inscripto">Responsable inscripto</SelectItem>
                 <SelectItem value="monotributo">Monotributo</SelectItem>
                 <SelectItem value="exento">Exento</SelectItem>
               </SelectContent>
@@ -121,11 +133,11 @@ export function ProveedorForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Dirección</CardTitle>
+          <CardTitle className="text-base">Dirección</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="calle">Calle *</Label>
+            <Label htmlFor="calle">Calle</Label>
             <Input
               id="calle"
               {...register('direccion.calle')}
@@ -137,7 +149,7 @@ export function ProveedorForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="ciudad">Ciudad *</Label>
+            <Label htmlFor="ciudad">Ciudad</Label>
             <Input
               id="ciudad"
               {...register('direccion.ciudad')}
@@ -149,7 +161,7 @@ export function ProveedorForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="provincia">Provincia *</Label>
+            <Label htmlFor="provincia">Provincia</Label>
             <Input
               id="provincia"
               {...register('direccion.provincia')}
@@ -161,7 +173,7 @@ export function ProveedorForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="codigoPostal">Código Postal *</Label>
+            <Label htmlFor="codigoPostal">Código postal</Label>
             <Input
               id="codigoPostal"
               {...register('direccion.codigoPostal')}
@@ -176,11 +188,11 @@ export function ProveedorForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Contacto</CardTitle>
+          <CardTitle className="text-base">Contacto</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="telefono">Teléfono *</Label>
+            <Label htmlFor="telefono">Teléfono</Label>
             <Input
               id="telefono"
               {...register('telefono')}
@@ -192,7 +204,7 @@ export function ProveedorForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
@@ -205,7 +217,7 @@ export function ProveedorForm({
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="contacto">Persona de Contacto</Label>
+            <Label htmlFor="contacto">Persona de contacto</Label>
             <Input
               id="contacto"
               {...register('contacto')}
@@ -217,11 +229,12 @@ export function ProveedorForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Datos Bancarios</CardTitle>
+          <CardTitle className="text-base">Datos bancarios</CardTitle>
+          <p className="text-sm text-muted-foreground">Para cuando le pagues.</p>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="banco">Banco *</Label>
+            <Label htmlFor="banco">Banco</Label>
             <Input
               id="banco"
               {...register('datosBancarios.banco')}
@@ -233,7 +246,7 @@ export function ProveedorForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="cbu">CBU *</Label>
+            <Label htmlFor="cbu">CBU</Label>
             <Input
               id="cbu"
               placeholder="22 dígitos"
@@ -246,7 +259,7 @@ export function ProveedorForm({
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="alias">Alias CBU</Label>
+            <Label htmlFor="alias">Alias</Label>
             <Input
               id="alias"
               {...register('datosBancarios.alias')}

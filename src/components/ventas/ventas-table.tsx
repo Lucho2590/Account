@@ -32,6 +32,23 @@ import type { EstadoVenta, MedioPago, Venta } from '@/types';
 type EstadoFilter = EstadoVenta | 'todos';
 type MedioFilter = MedioPago | 'todos';
 
+// Base UI pinta el valor crudo ("todos") salvo que el Root reciba el mapa de
+// etiquetas en `items`.
+const MEDIOS = {
+  todos: 'Todos los medios',
+  efectivo: 'Efectivo',
+  transferencia: 'Transferencia',
+  tarjeta: 'Tarjeta',
+  cheque: 'Cheque',
+  cuenta_corriente: 'Cuenta corriente',
+};
+
+const ESTADOS = {
+  todos: 'Todos los estados',
+  completada: 'Completadas',
+  anulada: 'Anuladas',
+};
+
 export function VentasTable({ ventas }: { ventas: Venta[] }) {
   const [search, setSearch] = useState('');
   const [estado, setEstado] = useState<EstadoFilter>('todos');
@@ -65,7 +82,7 @@ export function VentasTable({ ventas }: { ventas: Venta[] }) {
             className="pl-9"
           />
         </div>
-        <Select value={medio} onValueChange={(v) => setMedio(v as MedioFilter)}>
+        <Select value={medio} onValueChange={(v) => setMedio(v as MedioFilter)} items={MEDIOS}>
           <SelectTrigger className="sm:w-48">
             <SelectValue />
           </SelectTrigger>
@@ -78,7 +95,7 @@ export function VentasTable({ ventas }: { ventas: Venta[] }) {
             <SelectItem value="cuenta_corriente">Cuenta corriente</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={estado} onValueChange={(v) => setEstado(v as EstadoFilter)}>
+        <Select value={estado} onValueChange={(v) => setEstado(v as EstadoFilter)} items={ESTADOS}>
           <SelectTrigger className="sm:w-40">
             <SelectValue />
           </SelectTrigger>

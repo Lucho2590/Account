@@ -3,42 +3,33 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Proveedor } from '@/types';
 import { ProductoForm } from '@/components/productos/producto-form';
 import { ProductoSchemaType } from '@/lib/validators';
-import { addProducto, getProveedores } from '@/lib/firebase-db';
+import { addProducto, getProductos } from '@/lib/firebase-db';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useEmpresaId } from '@/contexts/AuthContext';
 
 export default function NuevoProductoPage() {
   const empresaId = useEmpresaId();
   const router = useRouter();
-  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Sólo para proponer un código que no choque con los que ya hay.
+  const [codigos, setCodigos] = useState<string[]>([]);
 
   useEffect(() => {
-    async function loadProveedores() {
-      try {
-        const data = await getProveedores(empresaId);
-        setProveedores(data);
-      } catch (error) {
-        console.error('Error loading proveedores:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadProveedores();
+    if (!empresaId) return;
+    getProductos(empresaId)
+      .then((ps) => setCodigos(ps.map((p) => p.codigo)))
+      .catch(() => setCodigos([]));
   }, [empresaId]);
 
   async function handleSubmit(data: ProductoSchemaType) {
     setIsSubmitting(true);
     try {
       await addProducto(empresaId, data);
-      toast.success('Producto creado correctamente');
+      toast.success(`${data.nombre} quedó cargado`);
       router.push('/productos');
     } catch (error) {
       console.error('Error creating producto:', error);
@@ -46,14 +37,6 @@ export default function NuevoProductoPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
   }
 
   return (
@@ -65,16 +48,19 @@ export default function NuevoProductoPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Nuevo Producto</h1>
-          <p className="text-muted-foreground">Registra un nuevo producto o materia prima</p>
+          <h1 className="text-3xl font-bold">Nuevo producto</h1>
+          <p className="text-muted-foreground">
+            Dale un nombre y listo: el resto lo podés completar después.
+          </p>
         </div>
       </div>
 
       <ProductoForm
-        proveedores={proveedores}
         onSubmit={handleSubmit}
         isLoading={isSubmitting}
-        submitLabel="Crear Producto"
+        submitLabel="Crear producto"
+        onCancel={() => router.push('/productos')}
+        codigosExistentes={codigos}
       />
     </div>
   );

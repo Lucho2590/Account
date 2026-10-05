@@ -221,6 +221,7 @@ export default function ReportesPage() {
                       setSelectedTipo(value as 'cliente' | 'proveedor');
                       setSelectedEntidad('');
                     }}
+                    items={{ cliente: 'Cliente', proveedor: 'Proveedor' }}
                   >
                     <SelectTrigger>
                       <SelectValue />

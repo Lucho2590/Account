@@ -24,22 +24,33 @@ export const clienteSchema = z.object({
 export type ClienteSchemaType = z.infer<typeof clienteSchema>;
 
 // Schema para Proveedor
+/**
+ * Un campo que se puede dejar vacío, pero que si se completa tiene que estar
+ * bien. Cargar un proveedor con el CUIT a mano, el CBU y la dirección completa
+ * antes de poder anotar una compra era pedir demasiado por adelantado; un dato
+ * mal cargado, en cambio, sigue siendo un error.
+ */
+const opcional = (validar: (v: string) => boolean, mensaje: string) =>
+  z.string().refine((v) => v.trim() === '' || validar(v), mensaje);
+
+// Del proveedor solo hace falta saber cómo se llama. Todo lo demás se completa
+// cuando aparece: la factura trae el CUIT, el primer pago trae el CBU.
 export const proveedorSchema = z.object({
   razonSocial: z.string().min(2, 'La razón social debe tener al menos 2 caracteres'),
-  cuit: z.string().regex(cuitRegex, 'CUIT inválido (formato: XX-XXXXXXXX-X)'),
+  cuit: opcional((v) => cuitRegex.test(v), 'CUIT inválido (formato: XX-XXXXXXXX-X)'),
   direccion: z.object({
-    calle: z.string().min(1, 'La calle es requerida'),
-    ciudad: z.string().min(1, 'La ciudad es requerida'),
-    provincia: z.string().min(1, 'La provincia es requerida'),
-    codigoPostal: z.string().min(1, 'El código postal es requerido'),
+    calle: z.string(),
+    ciudad: z.string(),
+    provincia: z.string(),
+    codigoPostal: z.string(),
   }),
-  telefono: z.string().min(8, 'El teléfono debe tener al menos 8 dígitos'),
-  email: z.string().email('Email inválido'),
+  telefono: opcional((v) => v.replace(/\D/g, '').length >= 8, 'El teléfono debe tener al menos 8 dígitos'),
+  email: opcional((v) => z.string().email().safeParse(v).success, 'Email inválido'),
   contacto: z.string(),
   condicionIva: z.enum(['responsable_inscripto', 'monotributo', 'exento']),
   datosBancarios: z.object({
-    banco: z.string().min(1, 'El banco es requerido'),
-    cbu: z.string().length(22, 'El CBU debe tener 22 dígitos'),
+    banco: z.string(),
+    cbu: opcional((v) => /^\d{22}$/.test(v), 'El CBU son 22 dígitos'),
     alias: z.string(),
   }),
   activo: z.boolean(),
@@ -53,7 +64,17 @@ export const productoSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   descripcion: z.string(),
   tipo: z.enum(['venta', 'materia_prima']),
-  unidad: z.string().min(1, 'La unidad es requerida'),
+  unidad: z.enum(['unidad', 'kg', 'g', 'litro', 'ml', 'metro']),
+  presentaciones: z
+    .array(
+      z.object({
+        id: z.string(),
+        nombre: z.string().min(1, 'Poné un nombre a la presentación'),
+        // Una presentación de 0 unidades no significa nada y rompería las
+        // conversiones con una división por cero.
+        factor: z.number().positive('La equivalencia debe ser mayor a 0'),
+      }),
+    ),
   stockActual: z.number().min(0, 'El stock no puede ser negativo'),
   stockMinimo: z.number().min(0, 'El stock mínimo no puede ser negativo'),
   precioCompra: z.number().min(0, 'El precio de compra no puede ser negativo'),
@@ -145,3 +166,13 @@ export const empresaSchema = z.object({
 export type EmpresaSchemaType = z.infer<typeof empresaSchema>;
 
 export type UsuarioSchemaType = z.infer<typeof usuarioSchema>;
+
+// Schema del catálogo de un proveedor
+export const itemCatalogoSchema = z.object({
+  productoId: z.string().min(1, 'Elegí un producto'),
+  codigoProveedor: z.string().optional(),
+  presentacionId: z.string().nullable(),
+  costoPresentacion: z.number().min(0, 'El costo no puede ser negativo'),
+});
+
+export type ItemCatalogoSchemaType = z.infer<typeof itemCatalogoSchema>;

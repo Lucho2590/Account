@@ -11,45 +11,33 @@ interface MedioOption {
   icon: typeof Banknote;
 }
 
-const options: MedioOption[] = [
-  {
-    value: 'efectivo',
-    label: 'Efectivo',
-    description: 'Cobro inmediato, no afecta saldo',
-    icon: Banknote,
-  },
-  {
-    value: 'transferencia',
-    label: 'Transferencia',
-    description: 'Cobro inmediato, no afecta saldo',
-    icon: Landmark,
-  },
-  {
-    value: 'tarjeta',
-    label: 'Tarjeta',
-    description: 'Cobro inmediato, no afecta saldo',
-    icon: CreditCard,
-  },
-  {
-    value: 'cheque',
-    label: 'Cheque',
-    description: 'Cobro inmediato, no afecta saldo',
-    icon: FileText,
-  },
-  {
-    value: 'cuenta_corriente',
-    label: 'Cuenta corriente',
-    description: 'Se carga al cliente como deuda',
-    icon: Wallet,
-  },
+const inmediato = {
+  venta: 'Cobro inmediato, no afecta saldo',
+  compra: 'Pago inmediato, no afecta saldo',
+} as const;
+
+const enCuenta = {
+  venta: 'Se carga al cliente como deuda',
+  compra: 'Queda como deuda con el proveedor',
+} as const;
+
+const buildOptions = (modo: 'venta' | 'compra'): MedioOption[] => [
+  { value: 'efectivo', label: 'Efectivo', description: inmediato[modo], icon: Banknote },
+  { value: 'transferencia', label: 'Transferencia', description: inmediato[modo], icon: Landmark },
+  { value: 'tarjeta', label: 'Tarjeta', description: inmediato[modo], icon: CreditCard },
+  { value: 'cheque', label: 'Cheque', description: inmediato[modo], icon: FileText },
+  { value: 'cuenta_corriente', label: 'Cuenta corriente', description: enCuenta[modo], icon: Wallet },
 ];
 
 interface MediosPagoSelectorProps {
   value: MedioPago | null;
   onChange: (medio: MedioPago) => void;
+  /** Cambia las descripciones; la mecánica contable es la misma. */
+  modo?: 'venta' | 'compra';
 }
 
-export function MediosPagoSelector({ value, onChange }: MediosPagoSelectorProps) {
+export function MediosPagoSelector({ value, onChange, modo = 'venta' }: MediosPagoSelectorProps) {
+  const options = buildOptions(modo);
   return (
     <div className="grid grid-cols-2 gap-2">
       {options.map((opt) => {

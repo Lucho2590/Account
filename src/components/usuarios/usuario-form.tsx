@@ -133,6 +133,10 @@ function NuevoUsuarioForm({ onSubmit, onClose, onLoadingChange }: NuevoUsuarioFo
             value={watch('rol')}
             onValueChange={(v) => setValue('rol', v as UsuarioSchemaType['rol'])}
             disabled={isLoading}
+            items={{
+              empleado: 'Empleado — opera, no gestiona usuarios',
+              dueno: 'Dueño — además gestiona los usuarios',
+            }}
           >
             <SelectTrigger id="rol">
               <SelectValue />
